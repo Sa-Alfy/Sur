@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import io.github.saalfy.sur.playback.PlayerConnection
-import io.github.saalfy.sur.ui.library.LibraryScreen
+import io.github.saalfy.sur.ui.SurApp
 import io.github.saalfy.sur.ui.theme.SurTheme
 
 class MainActivity : ComponentActivity() {
@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
         lifecycle.addObserver(playerConnection)
         setContent {
             SurTheme {
-                LibraryScreen(onPlay = playerConnection::playAll)
+                SurApp(onPlay = playerConnection::playAll)
             }
         }
     }

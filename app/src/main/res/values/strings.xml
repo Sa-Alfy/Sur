@@ -1,9 +1,40 @@
 <resources>
     <string name="app_name">Sur</string>
+
+    <!-- Navigation -->
+    <string name="tab_playlists">Playlists</string>
+    <string name="tab_songs">Songs</string>
+    <string name="back">Back</string>
+    <string name="more_options">More options</string>
+
+    <!-- Library -->
     <string name="unknown_artist">Unknown artist</string>
     <string name="library_empty">No music found on this device.</string>
     <string name="permission_rationale">Sur needs access to your audio files to show and play your music.</string>
     <string name="permission_permanently_denied">Access to audio files is turned off. Enable it in Settings → Permissions to see your music.</string>
     <string name="grant_access">Allow access</string>
     <string name="open_settings">Open settings</string>
+    <string name="selected_count">%1$d selected</string>
+    <string name="clear_selection">Clear selection</string>
+
+    <!-- Playlists -->
+    <string name="no_playlists">No playlists yet.\nTap + to create one.</string>
+    <string name="playlist_empty">This playlist is empty.\nAdd songs from the Songs tab.</string>
+    <string name="new_playlist">New playlist</string>
+    <string name="playlist_name">Name</string>
+    <string name="create">Create</string>
+    <string name="rename">Rename</string>
+    <string name="rename_playlist">Rename playlist</string>
+    <string name="delete">Delete</string>
+    <string name="delete_playlist">Delete playlist?</string>
+    <string name="delete_playlist_message">“%1$s” will be deleted. Your music files are not affected.</string>
+    <string name="cancel">Cancel</string>
+    <string name="add_to_playlist">Add to playlist</string>
+    <string name="added_to">Added to %1$s</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="reorder">Drag to reorder</string>
+    <plurals name="song_count">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
 </resources>

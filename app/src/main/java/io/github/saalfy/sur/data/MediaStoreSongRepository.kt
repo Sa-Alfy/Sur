@@ -8,18 +8,22 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.shareIn
 
 /** Tracks shorter than this are treated as clips or sound effects, not music. */
 const val MIN_SONG_DURATION_MS = 30_000L
@@ -29,6 +33,7 @@ private const val LIBRARY_CHANGE_DEBOUNCE_MS = 1_000L
 
 class MediaStoreSongRepository(
     context: Context,
+    scope: CoroutineScope,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : SongRepository {
 
@@ -42,11 +47,15 @@ class MediaStoreSongRepository(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         }
 
+    /** Shared so the Songs tab, playlist counts and playlist details run one query and one observer. */
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     override val songs: Flow<List<Song>> =
         merge(flowOf(Unit), manualRefresh, libraryChanges().debounce(LIBRARY_CHANGE_DEBOUNCE_MS))
             .mapLatest { querySongs() }
             .flowOn(ioDispatcher)
+            // Permission revoked mid-session: show nothing rather than crash the shared scope.
+            .catch { if (it is SecurityException) emit(emptyList()) else throw it }
+            .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     override suspend fun refresh() {
         manualRefresh.emit(Unit)
