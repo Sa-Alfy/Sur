@@ -17,8 +17,23 @@ android {
         versionName = "0.1.0"
     }
 
+    // Release signing comes from Gradle properties outside the repo (e.g. ~/.gradle/gradle.properties).
+    // Without them, release builds are simply unsigned.
+    val releaseStoreFile = providers.gradleProperty("SUR_RELEASE_STORE_FILE").orNull
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = providers.gradleProperty("SUR_RELEASE_STORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("SUR_RELEASE_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("SUR_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseStoreFile != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -55,7 +70,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.reorderable)
-    implementation(project(":downloader"))
+    // Debug-only until the downloader feature ships (keeps INTERNET out of release builds).
+    debugImplementation(project(":downloader"))
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

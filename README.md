@@ -2,7 +2,16 @@
 
 A lightweight, open-source Android music player for your local library.
 
-> **Work in progress.** Usable day to day; a downloader module is planned later.
+> **Work in progress.** Usable day to day. Latest version: **v0.1.0**. Get it from [Releases](https://github.com/Sa-Alfy/Sur/releases).
+
+## Install
+
+1. Download `Sur-v0.1.0.apk` from the [latest release](https://github.com/Sa-Alfy/Sur/releases/latest) on your phone.
+2. Open it and allow installing from this source when Android asks.
+3. Launch Sur and allow access to your audio files.
+
+Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
+`DA:D2:6A:E7:86:B2:52:6A:36:B6:81:F3:3F:F3:BE:1C:6C:76:1A:80:6C:EF:6C:0D:A3:6E:68:65:D7:75:6F:42`
 
 ## Features
 
@@ -13,7 +22,11 @@ A lightweight, open-source Android music player for your local library.
 - **Search**: songs by title, artist or album; playlists by name.
 - **Material 3**: dynamic color on Android 12+, a calm teal palette on Android 8–11, and it follows system light/dark.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
-- **Private**: no accounts, cloud, ads or analytics. Nothing leaves your device.
+- **Private**: no accounts, cloud, ads or analytics. Release builds have no internet permission at all.
+
+## Roadmap
+
+- **Downloader (in development)**: save audio from a single video link, saved into `Music/Sur`. It lives in a separate `:downloader` module and is only included in debug builds for now; it is **not** in releases yet.
 
 ## Requirements
 
@@ -38,7 +51,7 @@ Requires JDK 17 and the Android SDK (platform 37).
 ./gradlew assembleDebug
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/`. Run the unit tests with:
+The debug APK is written to `app/build/outputs/apk/debug/`. Release builds (`./gradlew assembleRelease`) are minified, and are signed only when `SUR_RELEASE_STORE_FILE`, `SUR_RELEASE_STORE_PASSWORD`, `SUR_RELEASE_KEY_ALIAS` and `SUR_RELEASE_KEY_PASSWORD` are set as Gradle properties (e.g. in `~/.gradle/gradle.properties`). Otherwise they're unsigned. Run the unit tests with:
 
 ```bash
 ./gradlew testDebugUnitTest
@@ -52,4 +65,4 @@ Sur is free software, licensed under the [GNU General Public License v3.0](LICEN
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for details.
 
-Third-party libraries: AndroidX / Jetpack (Apache-2.0) and [Reorderable](https://github.com/Calvin-LL/Reorderable) (Apache-2.0).
+Third-party libraries: AndroidX / Jetpack (Apache-2.0) and [Reorderable](https://github.com/Calvin-LL/Reorderable) (Apache-2.0). Debug builds also include [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) (GPL-3.0) and [OkHttp](https://github.com/square/okhttp) (Apache-2.0) for the in-development downloader.
