@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
         lifecycle.addObserver(playerConnection)
         setContent {
             SurTheme {
-                SurApp(onPlay = playerConnection::playAll)
+                SurApp(playerConnection)
             }
         }
     }

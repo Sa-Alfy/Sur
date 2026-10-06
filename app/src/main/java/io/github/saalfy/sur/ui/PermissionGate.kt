@@ -114,7 +114,7 @@ fun AudioPermissionGate(content: @Composable () -> Unit) {
 internal fun Context.hasPermission(permission: String): Boolean =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-private fun Context.openAppSettings() {
+internal fun Context.openAppSettings() {
     startActivity(
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),

@@ -35,6 +35,8 @@ import io.github.saalfy.sur.data.playlist.PlaylistSummary
 import io.github.saalfy.sur.ui.common.CenteredMessage
 import io.github.saalfy.sur.ui.common.ConfirmDialog
 import io.github.saalfy.sur.ui.common.NameDialog
+import io.github.saalfy.sur.ui.common.SearchableTopBar
+import androidx.compose.runtime.saveable.rememberSaveable
 
 private sealed interface PlaylistsDialog {
     data object Create : PlaylistsDialog
@@ -49,13 +51,23 @@ fun PlaylistsScreen(
     modifier: Modifier = Modifier,
     viewModel: PlaylistsViewModel = viewModel(factory = PlaylistsViewModel.Factory),
 ) {
-    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val playlists by viewModel.visiblePlaylists.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    var searching by rememberSaveable { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<PlaylistsDialog?>(null) }
 
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_playlists)) }) },
+        topBar = {
+            SearchableTopBar(
+                title = stringResource(R.string.tab_playlists),
+                query = query,
+                onQueryChange = viewModel::onQueryChange,
+                searching = searching,
+                onSearchingChange = { searching = it },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { dialog = PlaylistsDialog.Create }) {
                 Icon(painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.new_playlist))
@@ -66,6 +78,7 @@ fun PlaylistsScreen(
             val list = playlists
             when {
                 list == null -> Unit
+                list.isEmpty() && query.isNotBlank() -> CenteredMessage(stringResource(R.string.no_results, query.trim()))
                 list.isEmpty() -> CenteredMessage(stringResource(R.string.no_playlists))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     items(list, key = { it.playlist.id }) { summary ->

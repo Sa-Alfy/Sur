@@ -1,5 +1,6 @@
 package io.github.saalfy.sur.ui.common
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +58,60 @@ fun CenteredMessage(text: String, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Text(text, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
     }
+}
+
+/** Top app bar that turns into a search field. Back or ✕ closes search and clears the query. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchableTopBar(
+    title: String,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    searching: Boolean,
+    onSearchingChange: (Boolean) -> Unit,
+) {
+    fun close() {
+        onSearchingChange(false)
+        onQueryChange("")
+    }
+    BackHandler(enabled = searching) { close() }
+    TopAppBar(
+        title = {
+            if (searching) {
+                val focusRequester = remember { FocusRequester() }
+                TextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.search)) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                )
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            } else {
+                Text(title)
+            }
+        },
+        navigationIcon = {
+            if (searching) {
+                IconButton(onClick = ::close) {
+                    Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.close_search))
+                }
+            }
+        },
+        actions = {
+            if (!searching) {
+                IconButton(onClick = { onSearchingChange(true) }) {
+                    Icon(painterResource(R.drawable.ic_search), contentDescription = stringResource(R.string.search))
+                }
+            }
+        },
+    )
 }
 
 /** Single-line name input used for create and rename. Confirm is disabled while blank. */

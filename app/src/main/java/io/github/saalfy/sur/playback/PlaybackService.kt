@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -38,6 +40,7 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
+        player.addListener(SkipUnplayableItems(player))
 
         val openApp = PendingIntent.getActivity(
             this,
@@ -61,6 +64,17 @@ class PlaybackService : MediaSessionService() {
         }
         mediaSession = null
         super.onDestroy()
+    }
+
+    /** A file deleted or unreadable mid-queue: drop that item and continue with the rest. */
+    private class SkipUnplayableItems(private val player: ExoPlayer) : Player.Listener {
+        override fun onPlayerError(error: PlaybackException) {
+            // 2xxx = IO errors (e.g. file not found), 3xxx = parsing errors (corrupt file).
+            if (error.errorCode !in 2000..3999) return
+            val index = player.currentMediaItemIndex
+            if (index in 0 until player.mediaItemCount) player.removeMediaItem(index)
+            if (player.mediaItemCount > 0) player.prepare()
+        }
     }
 
     private object SessionCallback : MediaSession.Callback {

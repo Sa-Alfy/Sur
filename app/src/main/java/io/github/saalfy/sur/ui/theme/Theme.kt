@@ -15,6 +15,7 @@ private val LightColors = lightColorScheme(
     onPrimary = LightOnPrimary,
     primaryContainer = LightPrimaryContainer,
     onPrimaryContainer = LightOnPrimaryContainer,
+    inversePrimary = LightInversePrimary,
     secondary = LightSecondary,
     onSecondary = LightOnSecondary,
     secondaryContainer = LightSecondaryContainer,
@@ -29,7 +30,18 @@ private val LightColors = lightColorScheme(
     onSurface = LightOnSurface,
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = LightOnSurfaceVariant,
+    surfaceTint = LightPrimary,
+    inverseSurface = LightInverseSurface,
+    inverseOnSurface = LightInverseOnSurface,
     outline = LightOutline,
+    outlineVariant = LightOutlineVariant,
+    surfaceBright = LightSurfaceBright,
+    surfaceDim = LightSurfaceDim,
+    surfaceContainerLowest = LightSurfaceContainerLowest,
+    surfaceContainerLow = LightSurfaceContainerLow,
+    surfaceContainer = LightSurfaceContainer,
+    surfaceContainerHigh = LightSurfaceContainerHigh,
+    surfaceContainerHighest = LightSurfaceContainerHighest,
 )
 
 private val DarkColors = darkColorScheme(
@@ -37,6 +49,7 @@ private val DarkColors = darkColorScheme(
     onPrimary = DarkOnPrimary,
     primaryContainer = DarkPrimaryContainer,
     onPrimaryContainer = DarkOnPrimaryContainer,
+    inversePrimary = DarkInversePrimary,
     secondary = DarkSecondary,
     onSecondary = DarkOnSecondary,
     secondaryContainer = DarkSecondaryContainer,
@@ -51,7 +64,18 @@ private val DarkColors = darkColorScheme(
     onSurface = DarkOnSurface,
     surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = DarkOnSurfaceVariant,
+    surfaceTint = DarkPrimary,
+    inverseSurface = DarkInverseSurface,
+    inverseOnSurface = DarkInverseOnSurface,
     outline = DarkOutline,
+    outlineVariant = DarkOutlineVariant,
+    surfaceBright = DarkSurfaceBright,
+    surfaceDim = DarkSurfaceDim,
+    surfaceContainerLowest = DarkSurfaceContainerLowest,
+    surfaceContainerLow = DarkSurfaceContainerLow,
+    surfaceContainer = DarkSurfaceContainer,
+    surfaceContainerHigh = DarkSurfaceContainerHigh,
+    surfaceContainerHighest = DarkSurfaceContainerHighest,
 )
 
 @Composable

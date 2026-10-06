@@ -2,7 +2,9 @@ package io.github.saalfy.sur
 
 import android.app.Application
 import android.content.Context
+import io.github.saalfy.sur.data.AppPreferences
 import io.github.saalfy.sur.data.MediaStoreSongRepository
+import io.github.saalfy.sur.ui.artwork.ArtworkLoader
 import io.github.saalfy.sur.data.SongRepository
 import io.github.saalfy.sur.data.db.SurDatabase
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
@@ -26,6 +28,10 @@ class AppContainer(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val songRepository: SongRepository = MediaStoreSongRepository(context, appScope)
+
+    val artworkLoader: ArtworkLoader by lazy { ArtworkLoader(context) }
+
+    val preferences: AppPreferences by lazy { AppPreferences(context) }
 
     // Lazy so the playback service starting the process doesn't open the database.
     val playlistRepository: PlaylistRepository by lazy {

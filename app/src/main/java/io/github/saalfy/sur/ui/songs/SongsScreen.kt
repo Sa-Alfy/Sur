@@ -35,7 +35,9 @@ import io.github.saalfy.sur.R
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.ui.common.AddToPlaylistDialog
 import io.github.saalfy.sur.ui.common.CenteredMessage
+import io.github.saalfy.sur.ui.common.SearchableTopBar
 import io.github.saalfy.sur.ui.common.formatDuration
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +48,10 @@ fun SongsScreen(
 ) {
     val context = LocalContext.current
     val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val visibleSongs by viewModel.visibleSongs.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    var searching by rememberSaveable { mutableStateOf(false) }
 
     var selected by remember { mutableStateOf(emptySet<Long>()) }
     // Song ids waiting for a playlist choice; non-null shows the picker.
@@ -77,14 +82,21 @@ fun SongsScreen(
                     },
                 )
             } else {
-                TopAppBar(title = { Text(stringResource(R.string.tab_songs)) })
+                SearchableTopBar(
+                    title = stringResource(R.string.tab_songs),
+                    query = query,
+                    onQueryChange = viewModel::onQueryChange,
+                    searching = searching,
+                    onSearchingChange = { searching = it },
+                )
             }
         },
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
-            val list = songs
+            val list = visibleSongs
             when {
                 list == null -> Unit
+                list.isEmpty() && query.isNotBlank() -> CenteredMessage(stringResource(R.string.no_results, query.trim()))
                 list.isEmpty() -> CenteredMessage(stringResource(R.string.library_empty))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     itemsIndexed(list, key = { _, song -> song.id }) { index, song ->

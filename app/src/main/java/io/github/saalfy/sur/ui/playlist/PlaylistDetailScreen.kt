@@ -3,6 +3,7 @@ package io.github.saalfy.sur.ui.playlist
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,6 +46,7 @@ fun PlaylistDetailScreen(
     playlistId: Long,
     onBack: () -> Unit,
     onPlay: (songs: List<Song>, startIndex: Int) -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: PlaylistDetailViewModel = viewModel(
         key = "playlist-$playlistId",
         factory = PlaylistDetailViewModel.factory(playlistId),
@@ -59,6 +61,8 @@ fun PlaylistDetailScreen(
     }
 
     Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
                 title = {

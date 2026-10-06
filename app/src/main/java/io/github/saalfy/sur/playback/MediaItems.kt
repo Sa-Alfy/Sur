@@ -2,6 +2,7 @@ package io.github.saalfy.sur.playback
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import io.github.saalfy.sur.data.MediaStoreUris
 import io.github.saalfy.sur.data.Song
 
 fun Song.toMediaItem(): MediaItem =
@@ -14,11 +15,15 @@ fun Song.toMediaItem(): MediaItem =
                 .setTitle(title)
                 .setArtist(artist)
                 .setAlbumTitle(album)
+                .setArtworkUri(MediaStoreUris.albumArt(albumId))
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
                 .build(),
         )
         .build()
+
+/** MediaStore song id of an item built by [toMediaItem]. */
+val MediaItem.songId: Long? get() = mediaId.toLongOrNull()
 
 internal fun MediaItem.withPlayableUri(): MediaItem {
     if (localConfiguration != null) return this

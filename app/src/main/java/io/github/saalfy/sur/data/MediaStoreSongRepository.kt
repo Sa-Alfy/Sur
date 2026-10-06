@@ -1,11 +1,9 @@
 package io.github.saalfy.sur.data
 
 import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -40,12 +38,7 @@ class MediaStoreSongRepository(
     private val resolver: ContentResolver = context.applicationContext.contentResolver
     private val manualRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
-    private val collection: Uri =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        } else {
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        }
+    private val collection: Uri = MediaStoreUris.audioCollection
 
     /** Shared so the Songs tab, playlist counts and playlist details run one query and one observer. */
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -78,6 +71,7 @@ class MediaStoreSongRepository(
             MediaStore.Audio.Media.DISPLAY_NAME,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.IS_RINGTONE,
             MediaStore.Audio.Media.IS_NOTIFICATION,
@@ -93,6 +87,7 @@ class MediaStoreSongRepository(
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
             val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val ringtoneCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.IS_RINGTONE)
             val notificationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.IS_NOTIFICATION)
@@ -108,12 +103,12 @@ class MediaStoreSongRepository(
                 val id = cursor.getLong(idCol)
                 songs += Song(
                     id = id,
-                    uri = ContentUris.withAppendedId(collection, id),
                     title = cursor.getString(titleCol).known()
                         ?: cursor.getString(nameCol).known()
                         ?: id.toString(),
                     artist = cursor.getString(artistCol).known(),
                     album = cursor.getString(albumCol).known(),
+                    albumId = cursor.getLong(albumIdCol),
                     durationMs = cursor.getLong(durationCol),
                 )
             }
