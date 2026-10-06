@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Sur</string>
+    <string name="unknown_artist">Unknown artist</string>
+    <string name="library_empty">No music found on this device.</string>
+    <string name="permission_rationale">Sur needs access to your audio files to show and play your music.</string>
+    <string name="permission_permanently_denied">Access to audio files is turned off. Enable it in Settings → Permissions to see your music.</string>
+    <string name="grant_access">Allow access</string>
+    <string name="open_settings">Open settings</string>
 </resources>
