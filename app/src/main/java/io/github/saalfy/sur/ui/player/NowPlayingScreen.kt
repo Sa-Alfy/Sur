@@ -1,6 +1,7 @@
 package io.github.saalfy.sur.ui.player
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,11 +67,34 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
         PositionTicker(state, intervalMs = 500)
 
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Top bar: back + context badge + queue/more
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 IconButton(onClick = onClose) {
-                    Icon(painterResource(R.drawable.ic_expand_more), contentDescription = stringResource(R.string.close_player))
+                    Icon(
+                        painterResource(R.drawable.ic_expand_more),
+                        contentDescription = stringResource(R.string.close_player),
+                    )
                 }
                 Spacer(Modifier.weight(1f))
+                // "Playing from" context badge
+                val title = state.currentItem?.mediaMetadata?.title?.toString().orEmpty()
+                if (title.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        modifier = Modifier.padding(end = 4.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.now_playing_from),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
                 IconButton(onClick = { showQueue = !showQueue }) {
                     Icon(
                         painterResource(R.drawable.ic_queue_music),
@@ -106,7 +133,11 @@ private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
             songId = item.songId,
             artworkUri = item.mediaMetadata.artworkUri,
             size = LargeArtSize,
-            modifier = Modifier.widthIn(max = LargeArtSize).fillMaxWidth().aspectRatio(1f),
+            modifier = Modifier
+                .widthIn(max = LargeArtSize)
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(20.dp)),
         )
     }
 }
@@ -115,25 +146,37 @@ private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
 private fun PlaybackPanel(state: PlayerUiState, modifier: Modifier) {
     val item = state.currentItem ?: return
     Column(modifier, verticalArrangement = Arrangement.Center) {
-        Text(
-            text = item.mediaMetadata.title?.toString().orEmpty(),
-            style = MaterialTheme.typography.titleLarge,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(
-            text = item.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp),
-        )
+        // Track title + artist
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = item.mediaMetadata.title?.toString().orEmpty(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = item.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
         SeekBar(state)
+        Spacer(Modifier.height(4.dp))
         Controls(state)
+
+        // Up Next card
+        Spacer(Modifier.height(12.dp))
+        UpNextCard(state)
     }
 }
 
@@ -199,6 +242,67 @@ private fun Controls(state: PlayerUiState) {
                 painterResource(icon),
                 contentDescription = stringResource(label),
                 tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) inactive else active,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpNextCard(state: PlayerUiState) {
+    val queue = state.queue
+    val nextIndex = state.currentIndex + 1
+    val nextItem = queue.firstOrNull { it.windowIndex == nextIndex }?.mediaItem ?: return
+
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_queue_music),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.up_next),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text = nextItem.mediaMetadata.title?.toString().orEmpty(),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = nextItem.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                painterResource(R.drawable.ic_expand_more),
+                contentDescription = stringResource(R.string.queue),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
             )
         }
     }

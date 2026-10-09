@@ -91,5 +91,23 @@
     <string name="download_err_unsupported_channel">Channels aren\'t supported.</string>
     <string name="download_err_unsupported_link">That doesn\'t look like a YouTube video link.</string>
     <string name="download_err_failed">Download failed. Try again.</string>
+
+    <!-- Now Playing -->
+    <string name="now_playing_from">Now Playing</string>
+    <string name="up_next">Up Next</string>
+
+    <!-- Songs screen tabs -->
+    <string name="tab_all_songs_count">All Songs (%1$d)</string>
+    <string name="tab_queue">Current Queue</string>
+    <string name="batch_queue_edit">Batch queue edit</string>
+    <string name="select_all">All</string>
+
+    <!-- Downloader redesign -->
+    <string name="offline_extractor">Offline Extractor</string>
+    <string name="target_audio_format">Target Audio Format</string>
+    <string name="download_description_extended">Extract &amp; Save Audio to Music/Sur — Fast, strictly private, native background extraction without telemetry.</string>
+    <string name="battery_tip_title">Running on Oppo or Xiaomi?</string>
+    <string name="battery_tip_body">Disable battery optimization to prevent background download kills during long sessions.</string>
+    <string name="ic_music_note">Music note</string>
 </resources>
 

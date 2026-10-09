@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#f8faf9;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container": "#edeeed", "on-secondary-fixed-variant": "#324b49", "on-tertiary-fixed": "#00201d", "on-tertiary-fixed-variant": "#005049", "surface-container-low": "#f2f4f3", "inverse-surface": "#2e3131", "on-primary": "#ffffff", "surface-dim": "#d9dada", "on-secondary-container": "#506966", "surface-bright": "#f8faf9", "surface-container-lowest": "#ffffff", "primary": "#004f45", "primary-fixed-dim": "#84d5c5", "surface-container-highest": "#e1e3e2", "tertiary-container": "#006961", "surface-tint": "#046b5e", "inverse-primary": "#84d5c5", "on-tertiary-container": "#77e9dc", "tertiary-fixed-dim": "#66d9cc", "on-secondary": "#ffffff", "on-secondary-fixed": "#051f1d", "outline": "#6e7976", "on-error": "#ffffff", "surface-container-high": "#e7e8e8", "surface-variant": "#e1e3e2", "on-tertiary": "#ffffff", "secondary-container": "#cce8e4", "on-background": "#191c1c", "tertiary": "#004f48", "on-surface": "#191c1c", "on-primary-fixed-variant": "#005046", "error": "#ba1a1a", "background": "#f8faf9", "outline-variant": "#bec9c5", "secondary-fixed-dim": "#b1ccc8", "inverse-on-surface": "#eff1f0", "on-primary-fixed": "#00201b", "surface": "#f8faf9", "primary-fixed": "#a0f2e1", "tertiary-fixed": "#84f5e8", "on-error-container": "#93000a", "primary-container": "#00695c", "on-surface-variant": "#3e4946", "secondary": "#4a6360", "on-primary-container": "#94e5d5", "secondary-fixed": "#cce8e4", "error-container": "#ffdad6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.5rem", "space-md": "1rem", "space-xs": "0.25rem", "space-xl": "2rem", "gutter-tablet": "1.5rem", "margin-desktop": "2rem", "margin-tablet": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "margin": "1rem" }, "fontFamily": { "label-md": ["Inter"], "body-md": ["Inter"], "headline-sm": ["Inter"], "title-lg": ["Inter"], "body-lg": ["Inter"], "headline-lg": ["Inter"], "headline-lg-mobile": ["Inter"], "label-lg": ["Inter"], "title-sm": ["Inter"], "display-lg": ["Inter"], "title-md": ["Inter"], "body-sm": ["Inter"], "label-sm": ["Inter"], "display-md": ["Inter"], "headline-md": ["Inter"] }, "fontSize": { "label-md": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0.03em", "fontWeight": "500" }], "body-md": ["0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "0.02em", "fontWeight": "400" }], "headline-sm": ["1.25rem", { "lineHeight": "1.75rem", "letterSpacing": "0em", "fontWeight": "600" }], "title-lg": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0em", "fontWeight": "600" }], "body-lg": ["1rem", { "lineHeight": "1.5rem", "letterSpacing": "0.01em", "fontWeight": "400" }], "headline-lg": ["2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "title-sm": ["0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "display-lg": ["3rem", { "lineHeight": "3.5rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "title-md": ["1rem", { "lineHeight": "1.5rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "body-sm": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0.02em", "fontWeight": "400" }], "label-sm": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "500" }], "display-md": ["2.25rem", { "lineHeight": "2.75rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-md": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "0em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="Sur App Icon" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH8_WaEIpkNz7gWnIrRmDyLu3EawemzoSm9esOgm4iHaO4f-MHbBm9Oo6EJtzqhdINP2nG61pX6-kajfVEmK3s1CkUISYcJtiJ5eTgOJyhF4OPlgQx51V40ujjKVudgoYOod4xwTD4tnjvx_vJnTTWzPLY00kf_CWAo9ch2IgPUjdS_7DduZgz0keQM7ARbcrZu78uerZGrFSnlpKBUah1FjJADIas8VRDX3tQcyU3Ym1vSH_aTyPE"/><div class="flex flex-col min-w-0"><span class="font-title-lg text-title-lg text-primary truncate leading-none">Sur</span><span class="font-label-sm text-label-sm text-on-surface-variant truncate">Playlists</span></div></div><div class="flex items-center gap-space-xs"><a class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container-high" data-path="search-library" href="#"><span class="material-symbols-outlined text-[22px]">search</span></a><a class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container-high" data-path="app-settings" href="#"><span class="material-symbols-outlined text-[22px]">settings</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 ml-1"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-[148px] bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Search & Filter Bar Section -->
+<div class="px-margin pt-space-sm pb-space-xs">
+<div class="relative flex items-center w-full h-14 bg-surface-container-low rounded-full px-4 focus-within:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-outline text-[22px] flex-shrink-0 mr-3">search</span>
+<input class="w-full bg-transparent border-0 outline-none font-body-md text-body-md text-on-surface placeholder:text-outline focus:ring-0 p-0" placeholder="Search songs, albums, playlists..." type="search"/>
+<button aria-label="Voice search or audio filters" class="w-10 h-10 -mr-2 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container-highest flex-shrink-0 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+</div>
+</div>
+<!-- Library Quick Telemetry Bar -->
+<div class="px-margin py-space-xs">
+<div class="flex items-center justify-between bg-surface-container rounded-lg px-3 py-2 gap-space-xs">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-primary text-[18px] flex-shrink-0">storage</span>
+<span class="font-label-md text-label-md text-on-surface-variant truncate">
+<strong class="font-medium text-on-surface">142</strong> local tracks • Scanned via MediaStore
+        </span>
+</div>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-primary hover:bg-surface-container-high active:bg-surface-container-highest transition-transform" id="rescan-button" title="Rescan storage" type="button">
+<span class="material-symbols-outlined text-[18px]" id="rescan-icon">sync</span>
+</button>
+</div>
+</div>
+<!-- Primary Actions & Filter Chips -->
+<div class="px-margin pt-space-xs pb-space-sm flex items-center justify-between gap-space-sm">
+<button class="h-10 px-4 bg-primary text-on-primary rounded-full flex items-center gap-2 shadow-sm active:bg-primary-container transition-all" id="new-playlist-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span class="font-label-lg text-label-lg font-medium">New Playlist</span>
+</button>
+<div class="flex items-center gap-1.5">
+<!-- Sort Selector Trigger -->
+<div class="relative">
+<button class="h-10 px-3 bg-surface-container-low text-on-surface-variant rounded-full flex items-center gap-1.5 active:bg-surface-container transition-colors" id="sort-menu-trigger" type="button">
+<span class="material-symbols-outlined text-[18px]">sort</span>
+<span class="font-label-md text-label-md" id="current-sort-label">Recent</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<!-- Sort Dropdown Menu (hidden by default) -->
+<div class="hidden absolute right-0 top-12 z-30 w-44 bg-surface-container-lowest rounded-xl shadow-md py-1.5 flex flex-col" id="sort-dropdown">
+<button class="sort-option w-full px-4 py-2 text-left font-label-md text-label-md text-primary bg-secondary-container/40 flex items-center justify-between" data-sort="Recent" type="button">
+<span>Recently Played</span>
+<span class="material-symbols-outlined text-[16px]">check</span>
+</button>
+<button class="sort-option w-full px-4 py-2 text-left font-label-md text-label-md text-on-surface hover:bg-surface-container-low flex items-center justify-between" data-sort="A-Z" type="button">
+<span>Name (A-Z)</span>
+</button>
+<button class="sort-option w-full px-4 py-2 text-left font-label-md text-label-md text-on-surface hover:bg-surface-container-low flex items-center justify-between" data-sort="Track Count" type="button">
+<span>Track Count</span>
+</button>
+</div>
+</div>
+<!-- Multi-select toggle -->
+<button aria-label="Multi-select mode" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant bg-surface-container-low active:bg-surface-container transition-colors" id="multi-select-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">checklist</span>
+</button>
+</div>
+</div>
+<!-- Multi-select contextual bar (Hidden by default) -->
+<div class="hidden mx-margin mb-space-sm p-2 bg-secondary-container rounded-xl flex items-center justify-between" id="selection-bar">
+<div class="flex items-center gap-2 pl-2">
+<span class="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+<span class="font-label-md text-label-md text-on-secondary-fixed font-medium" id="selected-count">0 selected</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="h-8 px-2.5 rounded-lg bg-surface-container-lowest text-primary font-label-sm text-label-sm active:bg-surface-container" type="button">Play</button>
+<button class="h-8 px-2.5 rounded-lg bg-surface-container-lowest text-primary font-label-sm text-label-sm active:bg-surface-container" type="button">Queue</button>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-on-secondary-fixed active:bg-surface-container-high" id="cancel-selection-btn" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<!-- Playlists Section List -->
+<div class="px-margin flex flex-col gap-space-xs" id="playlist-list-container">
+<!-- Playlist Item 1: Favorites (Featured / Collage) -->
+<div class="playlist-row group relative bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm active:bg-surface-container transition-colors" data-id="pl-fav">
+<!-- Multi-select checkbox slot -->
+<div class="select-checkbox hidden mr-1">
+<input class="w-5 h-5 rounded text-primary focus:ring-0 cursor-pointer accent-primary" type="checkbox"/>
+</div>
+<!-- Drag Grip Handle -->
+<button class="drag-handle w-8 h-10 flex items-center justify-center text-outline cursor-grab active:cursor-grabbing flex-shrink-0 touch-none" type="button">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+</button>
+<!-- Thumbnail Cover Collage / Special Container -->
+<div class="w-14 h-14 rounded-lg bg-primary flex-shrink-0 relative overflow-hidden flex items-center justify-center shadow-sm">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="Minimalist abstract collage of audio waveform geometry, mint green and emerald teal hues, smooth physical clay render with studio overhead light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSz0FB9K37ubF1dyx7VTv60qOtoziwyGhcqQ1qcGPn0JmBMfvSUw5T9m9CAyhrISANkh1s4WTlcyKN-mkPJjCvpTyB3XO5bXDFjYAYz8qxqQzVB_w6yWOZEXc5XdsQJX-7sCRt2Nll7NZaRqs5Xjlaxe_5catzrhSu48WGpOZlhOzvKjPG1ZWy4CCgGAG4CpiYQGTODxPZovUmsRwYoFcOTTn0tpVqeBFAoWDHxHxbLFT1mAABdUYB"/>
+<div class="absolute inset-0 bg-primary/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[26px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+</div>
+<!-- Track Information -->
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<span class="font-title-md text-title-md text-on-surface font-semibold truncate">Favorites</span>
+<span class="w-2 h-2 rounded-full bg-primary flex-shrink-0"></span>
+</div>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="font-body-sm text-body-sm text-on-surface-variant font-medium">34 tracks</span>
+<span class="text-outline text-xs">•</span>
+<span class="font-body-sm text-body-sm text-primary font-medium">Auto-sync</span>
+</div>
+</div>
+<!-- Quick Action Buttons -->
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="Play Favorites" class="w-10 h-10 rounded-full flex items-center justify-center text-primary active:bg-secondary-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">play_circle</span>
+</button>
+<button aria-label="Shuffle Favorites" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">shuffle</span>
+</button>
+<button aria-label="Playlist options" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Playlist Item 2: Chill Waves -->
+<div class="playlist-row group relative bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm active:bg-surface-container transition-colors" data-id="pl-chill">
+<div class="select-checkbox hidden mr-1">
+<input class="w-5 h-5 rounded text-primary focus:ring-0 cursor-pointer accent-primary" type="checkbox"/>
+</div>
+<button class="drag-handle w-8 h-10 flex items-center justify-center text-outline cursor-grab active:cursor-grabbing flex-shrink-0 touch-none" type="button">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+</button>
+<div class="w-14 h-14 rounded-lg bg-secondary-container flex-shrink-0 relative overflow-hidden flex items-center justify-center shadow-sm">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="Calm ripples in deep teal water with gentle morning sun reflection, soft ambient gradient aesthetic, minimalist zen audio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiEtRm-mG0iJ-JwoOFdUz7QvPksFrtDgMq3y3Ohi4DQdsVkQewMTKkoxjTfZk-NaugN8MNHwqxSxyc8PCEAOMIFK7FIJX1J7k5FyA_nlpbGEuB5D8PBmFuIIbKZ0eQnfZVVXP9wlTI2lZsX3pLt6fzyAueLrj1AywFlbHpgEmecxdENMPazy4XMPHPCjrBVaFY5UfMgXVvL0a5Js3_w_6jXuZtGkRJJs7vTVW0NG1Ah2LFnoAYJ1JH"/>
+<div class="absolute inset-0 bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-fixed text-[24px]">waves</span>
+</div>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-title-md text-title-md text-on-surface font-semibold truncate">Chill Waves</span>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="font-body-sm text-body-sm text-on-surface-variant">18 tracks</span>
+<span class="text-outline text-xs">•</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">FLAC • 48kHz</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="Play Chill Waves" class="w-10 h-10 rounded-full flex items-center justify-center text-primary active:bg-secondary-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">play_circle</span>
+</button>
+<button aria-label="Shuffle Chill Waves" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">shuffle</span>
+</button>
+<button aria-label="Playlist options" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Playlist Item 3: Offline Roadtrip -->
+<div class="playlist-row group relative bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm active:bg-surface-container transition-colors" data-id="pl-roadtrip">
+<div class="select-checkbox hidden mr-1">
+<input class="w-5 h-5 rounded text-primary focus:ring-0 cursor-pointer accent-primary" type="checkbox"/>
+</div>
+<button class="drag-handle w-8 h-10 flex items-center justify-center text-outline cursor-grab active:cursor-grabbing flex-shrink-0 touch-none" type="button">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+</button>
+<div class="w-14 h-14 rounded-lg bg-surface-container-highest flex-shrink-0 relative overflow-hidden flex items-center justify-center shadow-sm">
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="Empty winding mountain highway surrounded by evergreen pine trees under moody teal twilight fog, cinematic composition" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoH0hljNJb2bEmJd5JvweFaD-8jTzF3QAQTlP3L3Dpp57W6zLmnen0qUnNMnkaTf1MK61t_xQJUVk63-Knhu6DfAf9MfvRzH_53g5KGZUax4LXwSEuVdaXpuin1tdCUqBQ1Gf6VhcOsbIUSrsaScIETPe6YriS0F5ApQpn2jHJ_-lI453v0mxQTJurhceW-QxKo_UdG8-F3Bgok49hgRtirrwFYNgWTsFTI_LrVVx2C1bWKxdLuM_C"/>
+<div class="absolute bottom-1 right-1 bg-surface-container-lowest/90 rounded px-1 flex items-center gap-0.5">
+<span class="material-symbols-outlined text-primary text-[12px]">download_done</span>
+</div>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="font-title-md text-title-md text-on-surface font-semibold truncate">Offline Roadtrip</span>
+</div>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="font-body-sm text-body-sm text-on-surface-variant">52 tracks</span>
+<span class="text-outline text-xs">•</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.2 bg-secondary-container rounded text-on-secondary-container font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[12px]">sd_storage</span>
+            1.2 GB
+          </span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="Play Offline Roadtrip" class="w-10 h-10 rounded-full flex items-center justify-center text-primary active:bg-secondary-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">play_circle</span>
+</button>
+<button aria-label="Shuffle Offline Roadtrip" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">shuffle</span>
+</button>
+<button aria-label="Playlist options" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Playlist Item 4: Recently Added -->
+<div class="playlist-row group relative bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm active:bg-surface-container transition-colors" data-id="pl-recent">
+<div class="select-checkbox hidden mr-1">
+<input class="w-5 h-5 rounded text-primary focus:ring-0 cursor-pointer accent-primary" type="checkbox"/>
+</div>
+<button class="drag-handle w-8 h-10 flex items-center justify-center text-outline cursor-grab active:cursor-grabbing flex-shrink-0 touch-none" type="button">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+</button>
+<div class="w-14 h-14 rounded-lg bg-surface-container-high flex-shrink-0 relative overflow-hidden flex items-center justify-center shadow-sm">
+<div class="w-full h-full bg-gradient-to-br from-surface-container-high via-surface-container to-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[24px]">history</span>
+</div>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-title-md text-title-md text-on-surface font-semibold truncate">Recently Added</span>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="font-body-sm text-body-sm text-on-surface-variant">12 tracks</span>
+<span class="text-outline text-xs">•</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Updated 2d ago</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="Play Recently Added" class="w-10 h-10 rounded-full flex items-center justify-center text-primary active:bg-secondary-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">play_circle</span>
+</button>
+<button aria-label="Shuffle Recently Added" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">shuffle</span>
+</button>
+<button aria-label="Playlist options" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Micro Create Modal (Toggled by '+ New Playlist') -->
+<div class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-inverse-surface/40 px-margin pb-6 sm:pb-0" id="create-modal">
+<div class="w-full max-w-sm bg-surface-container-lowest rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-title-lg text-title-lg text-on-surface font-semibold">Create Playlist</h3>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-outline active:bg-surface-container" id="close-modal-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface-variant" for="playlist-name-input">Playlist Name</label>
+<input class="h-12 px-3 rounded-lg bg-surface-container-low font-body-md text-body-md text-on-surface border-0 outline-none focus:bg-surface-container" id="playlist-name-input" placeholder="e.g., Late Night Focus" type="text"/>
+</div>
+<div class="flex items-center justify-end gap-2 pt-2">
+<button class="h-10 px-4 rounded-full font-label-lg text-label-lg text-on-surface-variant active:bg-surface-container" id="cancel-create-btn" type="button">Cancel</button>
+<button class="h-10 px-5 rounded-full bg-primary font-label-lg text-label-lg text-on-primary active:bg-primary-container" id="confirm-create-btn" type="button">Save</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initPlaylistsScreen() {
+    const rescanBtn = document.getElementById('rescan-button');
+    const rescanIcon = document.getElementById('rescan-icon');
+    const sortMenuTrigger = document.getElementById('sort-menu-trigger');
+    const sortDropdown = document.getElementById('sort-dropdown');
+    const currentSortLabel = document.getElementById('current-sort-label');
+    const multiSelectBtn = document.getElementById('multi-select-btn');
+    const selectionBar = document.getElementById('selection-bar');
+    const cancelSelectionBtn = document.getElementById('cancel-selection-btn');
+    const selectedCountLabel = document.getElementById('selected-count');
+    const checkboxes = document.querySelectorAll('.select-checkbox input');
+    const checkboxContainers = document.querySelectorAll('.select-checkbox');
+    const dragHandles = document.querySelectorAll('.drag-handle');
+    const newPlaylistBtn = document.getElementById('new-playlist-btn');
+    const createModal = document.getElementById('create-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const cancelCreateBtn = document.getElementById('cancel-create-btn');
+    const confirmCreateBtn = document.getElementById('confirm-create-btn');
+    const playlistNameInput = document.getElementById('playlist-name-input');
+    const playlistContainer = document.getElementById('playlist-list-container');
+
+    let isMultiSelect = false;
+
+    // Rescan Animation Delight
+    if (rescanBtn && rescanIcon) {
+      rescanBtn.addEventListener('click', () => {
+        rescanIcon.classList.add('animate-spin');
+        setTimeout(() => {
+          rescanIcon.classList.remove('animate-spin');
+        }, 1000);
+      });
+    }
+
+    // Sort Dropdown Behavior
+    if (sortMenuTrigger && sortDropdown) {
+      sortMenuTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sortDropdown.classList.toggle('hidden');
+      });
+
+      document.querySelectorAll('.sort-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sortVal = option.getAttribute('data-sort');
+          if (currentSortLabel) currentSortLabel.textContent = sortVal;
+          sortDropdown.classList.add('hidden');
+        });
+      });
+
+      document.addEventListener('click', () => {
+        sortDropdown.classList.add('hidden');
+      });
+    }
+
+    // Multi-select Mode Toggling
+    function toggleMultiSelect(active) {
+      isMultiSelect = active;
+      if (isMultiSelect) {
+        selectionBar.classList.remove('hidden');
+        checkboxContainers.forEach(el => el.classList.remove('hidden'));
+        dragHandles.forEach(el => el.classList.add('hidden'));
+      } else {
+        selectionBar.classList.add('hidden');
+        checkboxContainers.forEach(el => el.classList.add('hidden'));
+        dragHandles.forEach(el => el.classList.remove('hidden'));
+        checkboxes.forEach(cb => cb.checked = false);
+        updateSelectedCount();
+      }
+    }
+
+    function updateSelectedCount() {
+      const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+      if (selectedCountLabel) {
+        selectedCountLabel.textContent = checkedBoxes.length + ' selected';
+      }
+    }
+
+    if (multiSelectBtn) {
+      multiSelectBtn.addEventListener('click', () => toggleMultiSelect(!isMultiSelect));
+    }
+
+    if (cancelSelectionBtn) {
+      cancelSelectionBtn.addEventListener('click', () => toggleMultiSelect(false));
+    }
+
+    checkboxes.forEach(cb => {
+      cb.addEventListener('change', updateSelectedCount);
+    });
+
+    // Create Modal Interactions
+    if (newPlaylistBtn && createModal) {
+      newPlaylistBtn.addEventListener('click', () => {
+        createModal.classList.remove('hidden');
+        playlistNameInput.focus();
+      });
+
+      const hideModal = () => {
+        createModal.classList.add('hidden');
+        playlistNameInput.value = '';
+      };
+
+      closeModalBtn.addEventListener('click', hideModal);
+      cancelCreateBtn.addEventListener('click', hideModal);
+
+      confirmCreateBtn.addEventListener('click', () => {
+        const val = playlistNameInput.value.trim();
+        if (val) {
+          const newRow = document.createElement('div');
+          newRow.className = "playlist-row group relative bg-surface-container-lowest rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm active:bg-surface-container transition-colors";
+          newRow.innerHTML = `
+            <div class="select-checkbox ${isMultiSelect ? '' : 'hidden'} mr-1">
+              <input type="checkbox" class="w-5 h-5 rounded text-primary focus:ring-0 cursor-pointer accent-primary" />
+            </div>
+            <button type="button" class="drag-handle ${isMultiSelect ? 'hidden' : ''} w-8 h-10 flex items-center justify-center text-outline cursor-grab active:cursor-grabbing flex-shrink-0 touch-none">
+              <span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+            </button>
+            <div class="w-14 h-14 rounded-lg bg-surface-container flex-shrink-0 relative overflow-hidden flex items-center justify-center shadow-sm">
+              <span class="material-symbols-outlined text-primary text-[24px]">queue_music</span>
+            </div>
+            <div class="flex flex-col min-w-0 flex-1">
+              <span class="font-title-md text-title-md text-on-surface font-semibold truncate">${val}</span>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="font-body-sm text-body-sm text-on-surface-variant">0 tracks</span>
+                <span class="text-outline text-xs">&bull;</span>
+                <span class="font-body-sm text-body-sm text-primary">Just now</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-0.5 flex-shrink-0">
+              <button type="button" class="w-10 h-10 rounded-full flex items-center justify-center text-primary active:bg-secondary-container transition-colors">
+                <span class="material-symbols-outlined text-[24px]">play_circle</span>
+              </button>
+              <button type="button" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant active:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-[20px]">more_vert</span>
+              </button>
+            </div>
+          `;
+          playlistContainer.insertBefore(newRow, playlistContainer.firstChild);
+          hideModal();
+        }
+      });
+    }
+
+    // Micro Delight: Click feedback on drag grip
+    dragHandles.forEach(handle => {
+      handle.addEventListener('pointerdown', (e) => {
+        handle.closest('.playlist-row').classList.add('bg-secondary-container/50');
+      });
+      handle.addEventListener('pointerup', () => {
+        handle.closest('.playlist-row').classList.remove('bg-secondary-container/50');
+      });
+    });
+  })();
+</script></main><div class="fixed bottom-20 inset-x-0 z-40 px-margin pointer-events-none"><div class="pointer-events-auto w-full h-16 bg-secondary-container rounded-xl flex items-center justify-between px-3 relative overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><a class="flex items-center gap-3 flex-1 min-w-0 pr-2" data-path="now-playing" href="#"><div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-primary text-[22px]">music_note</span></div><div class="flex flex-col min-w-0"><span class="font-title-sm text-title-sm text-on-secondary-fixed font-medium truncate">No Track Loaded</span><span class="font-body-sm text-body-sm text-on-secondary-container truncate">Offline Library</span></div></a><div class="flex items-center gap-1 flex-shrink-0"><button class="w-11 h-11 flex items-center justify-center rounded-full text-on-secondary-fixed active:bg-primary/10" type="button"><span class="material-symbols-outlined text-[26px]">play_arrow</span></button><button class="w-11 h-11 flex items-center justify-center rounded-full text-on-secondary-fixed active:bg-primary/10" type="button"><span class="material-symbols-outlined text-[24px]">skip_next</span></button></div><div class="absolute bottom-0 inset-x-0 h-0.5 bg-primary-fixed-dim"><div class="h-full bg-primary w-1/3"></div></div></div></div><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-medium"><div class="flex justify-around items-center h-20 px-2"><a aria-current="page" class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full active:bg-surface-container-high transition-colors text-primary font-medium" data-path="playlists" href="#"><span class="material-symbols-outlined text-[24px]">queue_music</span><span class="font-label-sm text-label-sm">Playlists</span></a><a class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full text-on-surface-variant active:bg-surface-container-high transition-colors" data-path="songs" href="#"><span class="material-symbols-outlined text-[24px]">music_note</span><span class="font-label-sm text-label-sm">Songs</span></a><a class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full text-on-surface-variant active:bg-surface-container-high transition-colors" data-path="queue" href="#"><span class="material-symbols-outlined text-[24px]">playlist_play</span><span class="font-label-sm text-label-sm">Queue</span></a><a class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full text-on-surface-variant active:bg-surface-container-high transition-colors" data-path="downloader" href="#"><span class="material-symbols-outlined text-[24px]">download</span><span class="font-label-sm text-label-sm">Downloads</span></a></div></nav></body></html>

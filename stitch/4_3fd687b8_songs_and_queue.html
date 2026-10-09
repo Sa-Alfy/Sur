@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#f8faf9;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container": "#edeeed", "on-secondary-fixed-variant": "#324b49", "on-tertiary-fixed": "#00201d", "on-tertiary-fixed-variant": "#005049", "surface-container-low": "#f2f4f3", "inverse-surface": "#2e3131", "on-primary": "#ffffff", "surface-dim": "#d9dada", "on-secondary-container": "#506966", "surface-bright": "#f8faf9", "surface-container-lowest": "#ffffff", "primary": "#004f45", "primary-fixed-dim": "#84d5c5", "surface-container-highest": "#e1e3e2", "tertiary-container": "#006961", "surface-tint": "#046b5e", "inverse-primary": "#84d5c5", "on-tertiary-container": "#77e9dc", "tertiary-fixed-dim": "#66d9cc", "on-secondary": "#ffffff", "on-secondary-fixed": "#051f1d", "outline": "#6e7976", "on-error": "#ffffff", "surface-container-high": "#e7e8e8", "surface-variant": "#e1e3e2", "on-tertiary": "#ffffff", "secondary-container": "#cce8e4", "on-background": "#191c1c", "tertiary": "#004f48", "on-surface": "#191c1c", "on-primary-fixed-variant": "#005046", "error": "#ba1a1a", "background": "#f8faf9", "outline-variant": "#bec9c5", "secondary-fixed-dim": "#b1ccc8", "inverse-on-surface": "#eff1f0", "on-primary-fixed": "#00201b", "surface": "#f8faf9", "primary-fixed": "#a0f2e1", "tertiary-fixed": "#84f5e8", "on-error-container": "#93000a", "primary-container": "#00695c", "on-surface-variant": "#3e4946", "secondary": "#4a6360", "on-primary-container": "#94e5d5", "secondary-fixed": "#cce8e4", "error-container": "#ffdad6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.5rem", "space-md": "1rem", "space-xs": "0.25rem", "space-xl": "2rem", "gutter-tablet": "1.5rem", "margin-desktop": "2rem", "margin-tablet": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "margin": "1rem" }, "fontFamily": { "label-md": ["Inter"], "body-md": ["Inter"], "headline-sm": ["Inter"], "title-lg": ["Inter"], "body-lg": ["Inter"], "headline-lg": ["Inter"], "headline-lg-mobile": ["Inter"], "label-lg": ["Inter"], "title-sm": ["Inter"], "display-lg": ["Inter"], "title-md": ["Inter"], "body-sm": ["Inter"], "label-sm": ["Inter"], "display-md": ["Inter"], "headline-md": ["Inter"] }, "fontSize": { "label-md": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0.03em", "fontWeight": "500" }], "body-md": ["0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "0.02em", "fontWeight": "400" }], "headline-sm": ["1.25rem", { "lineHeight": "1.75rem", "letterSpacing": "0em", "fontWeight": "600" }], "title-lg": ["1.125rem", { "lineHeight": "1.5rem", "letterSpacing": "0em", "fontWeight": "600" }], "body-lg": ["1rem", { "lineHeight": "1.5rem", "letterSpacing": "0.01em", "fontWeight": "400" }], "headline-lg": ["2rem", { "lineHeight": "2.5rem", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg-mobile": ["1.75rem", { "lineHeight": "2.25rem", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "title-sm": ["0.875rem", { "lineHeight": "1.25rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "display-lg": ["3rem", { "lineHeight": "3.5rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "title-md": ["1rem", { "lineHeight": "1.5rem", "letterSpacing": "0.01em", "fontWeight": "500" }], "body-sm": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0.02em", "fontWeight": "400" }], "label-sm": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.04em", "fontWeight": "500" }], "display-md": ["2.25rem", { "lineHeight": "2.75rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-md": ["1.5rem", { "lineHeight": "2rem", "letterSpacing": "0em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="Sur App Icon" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBei-ElIBjo5MQGzlxL9io6zr4kHYZdPuMoCdWn-ilmlvzZRyc8YxqNmdsR5fmHG5gEmHREVeluPRrfoxYMQ08pcuew1_u0uu35s7Z7EObCDCVsSaN-M33x2CMAZK3vuZ4YNmWFJpBnP2QcsQtBO-LjxliSnFH2zp-mnB8rUT_HxRWgkUJx0vUuZ0xZ1Wll4OjMpeCgZYSKQxZOGLtwb0IY_3h0DYZ2aGcA1b5mE8clnxeyJko_D1qp"/><div class="flex flex-col min-w-0"><span class="font-title-lg text-title-lg text-primary truncate leading-none">Sur</span><span class="font-label-sm text-label-sm text-on-surface-variant truncate">Songs</span></div></div><div class="flex items-center gap-space-xs"><a class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container-high" data-path="search-library" href="#"><span class="material-symbols-outlined text-[22px]">search</span></a><a class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container-high" data-path="app-settings" href="#"><span class="material-symbols-outlined text-[22px]">settings</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 ml-1"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-[148px] bg-surface min-h-screen"><div class="flex flex-col w-full relative select-none">
+<!-- Contextual Action Bar (Batch Selection Mode Active) -->
+<div class="sticky top-0 z-30 flex items-center justify-between px-margin py-2.5 bg-primary text-on-primary shadow-sm transition-all duration-200" id="selection-bar">
+<div class="flex items-center gap-space-sm min-w-0">
+<button aria-label="Clear selection" class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-on-primary active:bg-on-primary/10 transition-colors" id="clear-selection-btn" type="button">
+<span class="material-symbols-outlined text-[22px]">close</span>
+</button>
+<div class="flex flex-col min-w-0">
+<span class="font-title-md text-title-md text-on-primary leading-tight font-medium" id="selected-count-label">3 selected</span>
+<span class="font-label-sm text-label-sm text-on-primary-container leading-tight">Batch queue edit</span>
+</div>
+</div>
+<!-- Quick Batch Actions -->
+<div class="flex items-center gap-0.5">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-primary active:bg-on-primary/10 transition-colors" title="Play Next" type="button">
+<span class="material-symbols-outlined text-[22px]">playlist_play</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-primary active:bg-on-primary/10 transition-colors" title="Add to Playlist" type="button">
+<span class="material-symbols-outlined text-[22px]">playlist_add</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-primary active:bg-on-primary/10 transition-colors" title="Remove" type="button">
+<span class="material-symbols-outlined text-[22px]">delete</span>
+</button>
+<button class="px-2.5 py-1.5 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md active:bg-primary-container/80 transition-colors ml-1" id="select-all-btn" type="button">
+        All
+      </button>
+</div>
+</div>
+<!-- Segmented View Filter Tabs -->
+<div class="px-margin pt-3 pb-2 flex flex-col gap-2.5">
+<div class="grid grid-cols-2 p-1 bg-surface-container rounded-xl">
+<button class="tab-pill py-2 px-3 rounded-lg text-center font-title-sm text-title-sm font-medium bg-surface-container-lowest text-primary shadow-sm transition-all" data-target="songs" type="button">
+        All Songs <span class="text-secondary font-normal">(142)</span>
+</button>
+<button class="tab-pill py-2 px-3 rounded-lg text-center font-title-sm text-title-sm font-medium text-on-surface-variant active:bg-surface-container-high transition-all" data-target="queue" type="button">
+        Current Queue <span class="text-secondary font-normal">(16)</span>
+</button>
+</div>
+<!-- Storage / MediaStore Status Chip & Sorting Info -->
+<div class="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-label-sm font-label-sm whitespace-nowrap">
+<span class="material-symbols-outlined text-[16px] text-primary">filter_alt</span>
+<span>Clips &lt;30s excluded (MediaStore active)</span>
+</div>
+<div class="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-container-low text-secondary rounded-full text-label-sm font-label-sm whitespace-nowrap">
+<span class="material-symbols-outlined text-[16px]">swap_vert</span>
+<span>A-Z</span>
+</div>
+</div>
+</div>
+<!-- Main Reorderable / Selectable List Container -->
+<div class="relative w-full pr-7 pl-margin pb-6">
+<div class="flex flex-col gap-1 w-full" id="track-list">
+<!-- Item 1: Now Playing + Multi-Select unchecked -->
+<div class="track-row flex items-center h-[72px] px-2.5 rounded-xl bg-secondary-container transition-colors" data-track-id="1">
+<!-- Checkbox / Leading Select -->
+<label class="w-11 h-11 flex items-center justify-center -ml-1 cursor-pointer flex-shrink-0">
+<input class="track-checkbox sr-only" type="checkbox"/>
+<span class="checkbox-visual w-5 h-5 rounded bg-surface-container-lowest flex items-center justify-center text-transparent transition-colors">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</label>
+<!-- Track Cover Art with Animated Equalizer Overlay -->
+<div class="relative w-11 h-11 rounded-lg bg-primary-container overflow-hidden flex-shrink-0 ml-1">
+<img class="w-full h-full object-cover" data-alt="Cyberpunk night roadway album cover in dark teal and indigo hues with neon lighting Kavinsky vibe graphic artwork" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFDlTam-kBqugof4Mc7rysY2Nk9OjPNdk4RGGGcqJwF_Zhoo0XPn6Aln3Sw3BUdI-QC5txErUkMZneehpUyoZd_pXfWbnXJDGJZW86ZgcRaIqx7AlXgjwpE8BK9H-x1K4-FTVrGJEkS2IeSD2Fu327RPNDSAB8ELubf9LOF9-bMtmcrIvJyTzfBZeZK-OBNQKFU83oQ7saW_TfX8K1ywj5oGTEHjhvMSRDln4K1ZE7HWHoqhfNNJGx"/>
+<div class="absolute inset-0 bg-primary/40 flex items-end justify-center gap-0.5 pb-2">
+<span class="w-1 bg-on-primary rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-4"></span>
+<span class="w-1 bg-on-primary rounded-full animate-[pulse_0.6s_ease-in-out_infinite_0.2s] h-6"></span>
+<span class="w-1 bg-on-primary rounded-full animate-[pulse_0.9s_ease-in-out_infinite_0.4s] h-3"></span>
+</div>
+</div>
+<!-- Track Info & Metadata -->
+<div class="flex flex-col min-w-0 flex-1 ml-3 pr-2">
+<div class="flex items-center gap-1.5">
+<span class="font-title-sm text-title-sm text-on-secondary-fixed truncate font-medium">Midnight Horizon</span>
+<span class="px-1.5 py-0.5 bg-primary/15 text-primary text-label-sm font-label-sm rounded uppercase tracking-wider font-semibold">Playing</span>
+</div>
+<div class="flex items-center gap-1.5 font-body-sm text-body-sm text-on-secondary-container truncate mt-0.5">
+<span class="truncate">Kavinsky</span>
+<span>•</span>
+<span class="font-label-sm text-label-sm bg-surface-container-highest px-1 rounded text-on-surface-variant font-mono">MP3 320k</span>
+<span>•</span>
+<span>04:35</span>
+</div>
+</div>
+<!-- Reorder Handle & Overflow Menu -->
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-secondary-container active:bg-primary/10 rounded-full" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<div class="drag-handle w-10 h-10 flex items-center justify-center text-on-secondary-container active:text-primary cursor-grab active:cursor-grabbing" title="Drag to reorder">
+<span class="material-symbols-outlined text-[22px]">drag_indicator</span>
+</div>
+</div>
+</div>
+<!-- Item 2: Selected Item (Checked) -->
+<div class="track-row flex items-center h-[72px] px-2.5 rounded-xl bg-surface-container-low transition-colors" data-track-id="2">
+<label class="w-11 h-11 flex items-center justify-center -ml-1 cursor-pointer flex-shrink-0">
+<input checked="" class="track-checkbox sr-only" type="checkbox"/>
+<span class="checkbox-visual w-5 h-5 rounded bg-primary text-on-primary flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</label>
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest overflow-hidden flex-shrink-0 ml-1">
+<img class="w-full h-full object-cover" data-alt="Moody red sports car rear lights on wet asphalt album cover minimalist synthwave style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNeRXAUjuS4e16WLAPk_mw6HFUfAbbwakeQr3KWm1P-Zdfrrklm1dRBkHBttpTMsN6mMlGcOE2GgWhx_fsMjzZGE7d3FsnnXusVe9-OwkLZzRV4KuhwqGo6aJbReUZ1rgEA_8nzmMXhgecrsq1xpfbl_ZovRlFDHW-ZHkPyIPlLN6T4E3gzs6pVKVMcMoLnpLTA-ddVX-qJ7uJyZ3guryicC9Fyu7ADzcYCIURVfogaSYgS_Zc3iqe"/>
+</div>
+<div class="flex flex-col min-w-0 flex-1 ml-3 pr-2">
+<span class="font-title-sm text-title-sm text-on-surface truncate font-medium">Nightcall</span>
+<div class="flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant truncate mt-0.5">
+<span class="truncate">Kavinsky</span>
+<span>•</span>
+<span class="font-label-sm text-label-sm bg-surface-container-highest px-1 rounded text-primary font-mono font-medium">FLAC</span>
+<span>•</span>
+<span>04:19</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-surface-variant active:bg-surface-container-high rounded-full" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<div class="drag-handle w-10 h-10 flex items-center justify-center text-outline active:text-primary cursor-grab active:cursor-grabbing" title="Drag to reorder">
+<span class="material-symbols-outlined text-[22px]">drag_indicator</span>
+</div>
+</div>
+</div>
+<!-- Item 3: Selected Item (Checked) -->
+<div class="track-row flex items-center h-[72px] px-2.5 rounded-xl bg-surface-container-low transition-colors" data-track-id="3">
+<label class="w-11 h-11 flex items-center justify-center -ml-1 cursor-pointer flex-shrink-0">
+<input checked="" class="track-checkbox sr-only" type="checkbox"/>
+<span class="checkbox-visual w-5 h-5 rounded bg-primary text-on-primary flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</label>
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest overflow-hidden flex-shrink-0 ml-1">
+<img class="w-full h-full object-cover" data-alt="Gold and chrome robot helmets disco sunset geometric album cover warm ambient teal lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWjU2IbYYLV3lMiettWTBDb3XxG818IMbwMrTvakZu4iGWHtEZjEAzfVyLJBr9ePymYF-VsONhLWGmZqp2FdzcwnsV3X62GdmPeb-U77O3elXe4gV7p3OVNZ3dQTQRfAVFl6F4qf7E39erQs60VO3AL_YG6EjlQWDczRcKEEmS2bi09gdH16g0iM0dvSgZuux05BWxNRD1KJc2HT1O3BHwO1WCIz9KifE9zhZLgHBU0IlaxLQ7r2Xn"/>
+</div>
+<div class="flex flex-col min-w-0 flex-1 ml-3 pr-2">
+<span class="font-title-sm text-title-sm text-on-surface truncate font-medium">Get Lucky</span>
+<div class="flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant truncate mt-0.5">
+<span class="truncate">Daft Punk ft. Pharrell</span>
+<span>•</span>
+<span class="font-label-sm text-label-sm bg-surface-container-highest px-1 rounded text-on-surface-variant font-mono">MP3</span>
+<span>•</span>
+<span>04:08</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-surface-variant active:bg-surface-container-high rounded-full" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<div class="drag-handle w-10 h-10 flex items-center justify-center text-outline active:text-primary cursor-grab active:cursor-grabbing" title="Drag to reorder">
+<span class="material-symbols-outlined text-[22px]">drag_indicator</span>
+</div>
+</div>
+</div>
+<!-- Item 4: Unchecked Item -->
+<div class="track-row flex items-center h-[72px] px-2.5 rounded-xl bg-surface transition-colors" data-track-id="4">
+<label class="w-11 h-11 flex items-center justify-center -ml-1 cursor-pointer flex-shrink-0">
+<input class="track-checkbox sr-only" type="checkbox"/>
+<span class="checkbox-visual w-5 h-5 rounded bg-surface-container flex items-center justify-center text-transparent transition-colors">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</label>
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest overflow-hidden flex-shrink-0 ml-1">
+<img class="w-full h-full object-cover" data-alt="Chilled vaporwave sunburst over mountain grid horizon album cover pastel green and turquoise tints" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuF7-0nJZL7BwXEv3SFtfM_W54DHQ_TEhtCyhb4W7DTMr9hO9ObaQla79YjhR7av6cHvNfN_cdblsRNpYu4hggu6VniSknKYrFAZvPMxc70TwIzbA5PFQlCm5-WnIc47YSS9jKLl_BnQNtpvgdP-erZwnT2YhNmFuT8jv8CI_TmS2VGUBtd5wtoLIzRgxVQaSxKJy4XZn1yTYZEWx-w8k9_c7-Bu6cnhD48JzB9RuNYAX2vU8zbdcQ"/>
+</div>
+<div class="flex flex-col min-w-0 flex-1 ml-3 pr-2">
+<span class="font-title-sm text-title-sm text-on-surface truncate font-medium">Resonance</span>
+<div class="flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant truncate mt-0.5">
+<span class="truncate">Home</span>
+<span>•</span>
+<span class="font-label-sm text-label-sm bg-surface-container-highest px-1 rounded text-on-surface-variant font-mono">AAC</span>
+<span>•</span>
+<span>03:32</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-surface-variant active:bg-surface-container-high rounded-full" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<div class="drag-handle w-10 h-10 flex items-center justify-center text-outline active:text-primary cursor-grab active:cursor-grabbing" title="Drag to reorder">
+<span class="material-symbols-outlined text-[22px]">drag_indicator</span>
+</div>
+</div>
+</div>
+<!-- Item 5: Unchecked Item -->
+<div class="track-row flex items-center h-[72px] px-2.5 rounded-xl bg-surface transition-colors" data-track-id="5">
+<label class="w-11 h-11 flex items-center justify-center -ml-1 cursor-pointer flex-shrink-0">
+<input class="track-checkbox sr-only" type="checkbox"/>
+<span class="checkbox-visual w-5 h-5 rounded bg-surface-container flex items-center justify-center text-transparent transition-colors">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</label>
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest overflow-hidden flex-shrink-0 ml-1">
+<img class="w-full h-full object-cover" data-alt="Electric cross neon sign in dark cinematic red and cyan haze modern pop album art" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBu1gqD3-GKfZBf2b5VVhyc2euNdj4Nt9WtgPKqhQAfzuqpMLf9q0OAjwgOoLV4IusmdVWjbgCAtrEJ4Dik-ZBoAy0TLaJSLcLraLwNv9PZK_BxM_R1lhvKVPGixfVmzWiMjNPgjknXObrmJU90xl5QsbZyia6mOe_FM1Gbwkc-cfIwH3Wrm5yOq4eI7iDW8tHYg9H1Js-HdO5YnzL5pYg1wqCbDEexzeSen0OScS-bZExHs9oWQGVL"/>
+</div>
+<div class="flex flex-col min-w-0 flex-1 ml-3 pr-2">
+<span class="font-title-sm text-title-sm text-on-surface truncate font-medium">Starboy</span>
+<div class="flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant truncate mt-0.5">
+<span class="truncate">The Weeknd</span>
+<span>•</span>
+<span class="font-label-sm text-label-sm bg-surface-container-highest px-1 rounded text-on-surface-variant font-mono">MP3</span>
+<span>•</span>
+<span>03:50</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-surface-variant active:bg-surface-container-high rounded-full" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<div class="drag-handle w-10 h-10 flex items-center justify-center text-outline active:text-primary cursor-grab active:cursor-grabbing" title="Drag to reorder">
+<span class="material-symbols-outlined text-[22px]">drag_indicator</span>
+</div>
+</div>
+</div>
+<!-- Item 6: Unchecked Item (Fill out list for scrolling) -->
+<div class="track-row flex items-center h-[72px] px-2.5 rounded-xl bg-surface transition-colors" data-track-id="6">
+<label class="w-11 h-11 flex items-center justify-center -ml-1 cursor-pointer flex-shrink-0">
+<input class="track-checkbox sr-only" type="checkbox"/>
+<span class="checkbox-visual w-5 h-5 rounded bg-surface-container flex items-center justify-center text-transparent transition-colors">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</label>
+<div class="w-11 h-11 rounded-lg bg-surface-container-highest overflow-hidden flex-shrink-0 ml-1">
+<img class="w-full h-full object-cover" data-alt="Ambient green botanical leaves with geometric audio wave overlay minimalist design" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2BlWOwB0maFxY4fEafjNZ6CHyPtnPbPxp-QXQ0tmFUD0tXYaIQolFoufDoq3PXaF5KEyITzmDZsDGflFyVuvteC10Yyr2xGVuVSrKo54OBu2ne7KnO0s0FcE22QBlMg381xRqJoi-AkAp-no92-eYnlyq7OtODXZqIvIIcfo_xSGsu1cCMbz6-6-xTDXl2lRtcdx5TdXoDHniaY1tP9kDWbj5b0toyJoLcH5BDUQyBuTXQxwvbnm6"/>
+</div>
+<div class="flex flex-col min-w-0 flex-1 ml-3 pr-2">
+<span class="font-title-sm text-title-sm text-on-surface truncate font-medium">Veridis Quo</span>
+<div class="flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant truncate mt-0.5">
+<span class="truncate">Daft Punk</span>
+<span>•</span>
+<span class="font-label-sm text-label-sm bg-surface-container-highest px-1 rounded text-primary font-mono font-medium">FLAC</span>
+<span>•</span>
+<span>05:44</span>
+</div>
+</div>
+<div class="flex items-center gap-0.5 flex-shrink-0">
+<button aria-label="More options" class="w-10 h-10 flex items-center justify-center text-on-surface-variant active:bg-surface-container-high rounded-full" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<div class="drag-handle w-10 h-10 flex items-center justify-center text-outline active:text-primary cursor-grab active:cursor-grabbing" title="Drag to reorder">
+<span class="material-symbols-outlined text-[22px]">drag_indicator</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Fast Scroll Alphabetical Index Column (Optimized for Android Thumb Navigation) -->
+<div class="fixed right-1 top-36 bottom-40 w-5 flex flex-col items-center justify-between text-on-surface-variant font-label-sm text-label-sm select-none z-20 pointer-events-auto py-1">
+<span class="w-4 h-4 flex items-center justify-center rounded-full text-primary font-semibold">#</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">A</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">C</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed font-semibold">D</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">G</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">H</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full bg-primary text-on-primary font-semibold">K</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">M</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">N</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">R</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">S</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">T</span>
+<span class="w-4 h-4 flex items-center justify-center rounded-full">Z</span>
+</div>
+</div>
+<!-- Reorder Floating Toast Hint -->
+<div class="px-margin pt-1 pb-4">
+<div class="w-full py-2.5 px-3 bg-surface-container-low rounded-xl flex items-center gap-2.5 text-on-secondary-container">
+<span class="material-symbols-outlined text-[18px] text-primary">drag_indicator</span>
+<span class="font-body-sm text-body-sm">Hold and drag handles to reorder playlist playback order</span>
+</div>
+</div>
+</div>
+<script>
+  (function initListInteractions() {
+    const list = document.getElementById('track-list');
+    const checkboxes = list.querySelectorAll('.track-checkbox');
+    const countLabel = document.getElementById('selected-count-label');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const clearBtn = document.getElementById('clear-selection-btn');
+    const selectionBar = document.getElementById('selection-bar');
+
+    function updateCount() {
+      const checkedBoxes = list.querySelectorAll('.track-checkbox:checked');
+      const count = checkedBoxes.length;
+      if (count === 0) {
+        countLabel.textContent = '0 selected';
+        selectionBar.classList.add('opacity-90');
+      } else {
+        countLabel.textContent = count + ' selected';
+        selectionBar.classList.remove('opacity-90');
+      }
+    }
+
+    checkboxes.forEach((cb) => {
+      cb.addEventListener('change', (e) => {
+        const visual = cb.nextElementSibling;
+        const row = cb.closest('.track-row');
+        const isNowPlaying = row.getAttribute('data-track-id') === '1';
+
+        if (cb.checked) {
+          visual.classList.remove('bg-surface-container', 'bg-surface-container-lowest', 'text-transparent');
+          visual.classList.add('bg-primary', 'text-on-primary');
+          if (!isNowPlaying) {
+            row.classList.remove('bg-surface');
+            row.classList.add('bg-surface-container-low');
+          }
+        } else {
+          visual.classList.remove('bg-primary', 'text-on-primary');
+          visual.classList.add(isNowPlaying ? 'bg-surface-container-lowest' : 'bg-surface-container', 'text-transparent');
+          if (!isNowPlaying) {
+            row.classList.remove('bg-surface-container-low');
+            row.classList.add('bg-surface');
+          }
+        }
+        updateCount();
+      });
+    });
+
+    selectAllBtn.addEventListener('click', () => {
+      checkboxes.forEach((cb) => {
+        if (!cb.checked) {
+          cb.checked = true;
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    clearBtn.addEventListener('click', () => {
+      checkboxes.forEach((cb) => {
+        if (cb.checked) {
+          cb.checked = false;
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // Tab toggle micro-interaction
+    const tabs = document.querySelectorAll('.tab-pill');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach((t) => {
+          t.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+          t.classList.add('text-on-surface-variant');
+        });
+        tab.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+        tab.classList.remove('text-on-surface-variant');
+      });
+    });
+  })();
+</script></main><div class="fixed bottom-20 inset-x-0 z-40 px-margin pointer-events-none"><div class="pointer-events-auto w-full h-16 bg-secondary-container rounded-xl flex items-center justify-between px-3 relative overflow-hidden shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><a class="flex items-center gap-3 flex-1 min-w-0 pr-2" data-path="now-playing" href="#"><div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-primary text-[22px]">music_note</span></div><div class="flex flex-col min-w-0"><span class="font-title-sm text-title-sm text-on-secondary-fixed font-medium truncate">No Track Loaded</span><span class="font-body-sm text-body-sm text-on-secondary-container truncate">Offline Library</span></div></a><div class="flex items-center gap-1 flex-shrink-0"><button class="w-11 h-11 flex items-center justify-center rounded-full text-on-secondary-fixed active:bg-primary/10" type="button"><span class="material-symbols-outlined text-[26px]">play_arrow</span></button><button class="w-11 h-11 flex items-center justify-center rounded-full text-on-secondary-fixed active:bg-primary/10" type="button"><span class="material-symbols-outlined text-[24px]">skip_next</span></button></div><div class="absolute bottom-0 inset-x-0 h-0.5 bg-primary-fixed-dim"><div class="h-full bg-primary w-1/3"></div></div></div></div><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-medium"><div class="flex justify-around items-center h-20 px-2"><a class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full text-on-surface-variant active:bg-surface-container-high transition-colors" data-path="playlists" href="#"><span class="material-symbols-outlined text-[24px]">queue_music</span><span class="font-label-sm text-label-sm">Playlists</span></a><a aria-current="page" class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full active:bg-surface-container-high transition-colors text-primary font-medium" data-path="songs" href="#"><span class="material-symbols-outlined text-[24px]">music_note</span><span class="font-label-sm text-label-sm">Songs</span></a><a class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full text-on-surface-variant active:bg-surface-container-high transition-colors" data-path="queue" href="#"><span class="material-symbols-outlined text-[24px]">playlist_play</span><span class="font-label-sm text-label-sm">Queue</span></a><a class="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-full text-on-surface-variant active:bg-surface-container-high transition-colors" data-path="downloader" href="#"><span class="material-symbols-outlined text-[24px]">download</span><span class="font-label-sm text-label-sm">Downloads</span></a></div></nav></body></html>
