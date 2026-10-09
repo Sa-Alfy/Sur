@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.StatFs
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -35,6 +36,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.coroutineContext
 
 class DownloadService : Service() {
 
@@ -61,7 +63,7 @@ class DownloadService : Service() {
         }
 
         if (isDownloading || currentJob?.isActive == true) {
-            DownloadManager.updateState(DownloadState.Busy)
+            DownloadManager.emitEvent(DownloadEvent.Busy)
             return START_NOT_STICKY
         }
 
@@ -98,7 +100,7 @@ class DownloadService : Service() {
         }
         ServiceCompat.startForeground(this, NOTIFICATION_ID, initialNotification, foregroundServiceType)
 
-        currentJob = serviceScope.launch {
+        val job = serviceScope.launch {
             var rawFile: File? = null
             var remuxedFile: File? = null
             try {
@@ -170,10 +172,12 @@ class DownloadService : Service() {
                 }
 
                 // 5. Mp4TagWriter (with fallback)
-                withContext(Dispatchers.IO) {
-                    runCatching {
+                try {
+                    withContext(Dispatchers.IO) {
                         Mp4TagWriter.write(remuxed, info.title, info.artist, DOWNLOAD_ALBUM)
                     }
+                } catch (t: Throwable) {
+                    Log.w("SurDownload", "Mp4TagWriter.write failed", t)
                 }
 
                 // 6. AudioFileSaver.save
@@ -183,21 +187,32 @@ class DownloadService : Service() {
 
                 DownloadManager.updateState(DownloadState.Done(saved.songId, info.title))
             } catch (e: CancellationException) {
-                DownloadManager.updateState(DownloadState.Idle)
+                if (currentJob === coroutineContext[Job]) {
+                    DownloadManager.updateState(DownloadState.Idle)
+                }
                 throw e
             } catch (e: DownloadException) {
-                DownloadManager.updateState(DownloadState.Error(e.error))
+                Log.e("SurDownload", "download failed", e)
+                if (currentJob === coroutineContext[Job]) {
+                    DownloadManager.updateState(DownloadState.Error(e.error))
+                }
             } catch (t: Throwable) {
-                DownloadManager.updateState(DownloadState.Error(DownloadError.Failed))
+                Log.e("SurDownload", "download failed", t)
+                if (currentJob === coroutineContext[Job]) {
+                    DownloadManager.updateState(DownloadState.Error(DownloadError.Failed))
+                }
             } finally {
                 rawFile?.delete()
                 remuxedFile?.delete()
-                isDownloading = false
-                currentJob = null
-                ServiceCompat.stopForeground(this@DownloadService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                if (currentJob === coroutineContext[Job]) {
+                    isDownloading = false
+                    currentJob = null
+                    ServiceCompat.stopForeground(this@DownloadService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
             }
         }
+        currentJob = job
     }
 
     private fun buildNotification(

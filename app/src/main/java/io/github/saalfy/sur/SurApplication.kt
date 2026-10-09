@@ -20,10 +20,6 @@ class SurApplication : Application() {
 
     val downloadManager: DownloadManager get() = DownloadManager
 
-    companion object {
-        val downloadManager: DownloadManager get() = DownloadManager
-    }
-
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)

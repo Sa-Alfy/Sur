@@ -21,9 +21,6 @@ sealed interface DownloadError {
 
     /** Generic fallback: "Download failed, try again". */
     data object Failed : DownloadError
-
-    /** A download is already in progress. */
-    data object Busy : DownloadError
 }
 
 class DownloadException(val error: DownloadError, cause: Throwable? = null) :

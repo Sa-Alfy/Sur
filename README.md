@@ -26,7 +26,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 
 ## Roadmap
 
-- **Downloader**: save audio from a single video link into `Music/Sur`. The engine, foreground service, notifications and audio file saver have landed; the download UI screen is in development.
+- **Downloader**: save audio from a single video link into `Music/Sur`. The engine is complete: foreground `dataSync` service, determinate progress notification with Cancel, `StatFs` storage check, Mp4 remux + tagging, `AudioFileSaver`, and a `StateFlow` + one-shot `SharedFlow` exposed for the UI layer. The download UI screen is in development.
 
 ## Requirements
 
@@ -41,7 +41,7 @@ Some phones (Oppo, Xiaomi, Vivo, Huawei…) stop background apps aggressively. I
 
 ## Tech
 
-Kotlin, Jetpack Compose, Material 3, Media3 (ExoPlayer + MediaSessionService) and Room.
+Kotlin, Jetpack Compose, Material 3, Media3 (ExoPlayer + MediaSessionService), Room, and NewPipe Extractor + OkHttp for the downloader.
 `minSdk` 26, `targetSdk` 37. Package: `io.github.saalfy.sur`.
 
 ## Build

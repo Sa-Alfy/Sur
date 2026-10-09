@@ -10,10 +10,12 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 
 private const val SUR_FOLDER = "Sur"
@@ -38,7 +40,7 @@ class AudioFileSaver(context: Context) {
         }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun saveViaMediaStore(source: File, fileName: String, title: String, artist: String?, album: String?): SavedAudio {
+    private suspend fun saveViaMediaStore(source: File, fileName: String, title: String, artist: String?, album: String?): SavedAudio {
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val relativePath = "${Environment.DIRECTORY_MUSIC}/$SUR_FOLDER"
         val values = ContentValues().apply {
@@ -52,9 +54,12 @@ class AudioFileSaver(context: Context) {
         }
         val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore insert failed")
         try {
+            coroutineContext.ensureActive()
             val out = resolver.openOutputStream(uri) ?: throw IOException("Can't open $uri")
             out.use { stream -> source.inputStream().use { it.copyTo(stream) } }
+            coroutineContext.ensureActive()
             resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+            coroutineContext.ensureActive()
         } catch (t: Throwable) {
             resolver.delete(uri, null, null)
             throw t
@@ -67,15 +72,19 @@ class AudioFileSaver(context: Context) {
         val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), SUR_FOLDER)
         if (!dir.isDirectory && !dir.mkdirs()) throw IOException("Can't create ${dir.path}")
         val file = uniqueFile(dir, fileName)
+        var uri: Uri? = null
         try {
+            coroutineContext.ensureActive()
             source.copyTo(file)
+            coroutineContext.ensureActive()
+            uri = scan(file) ?: throw IOException("Media scanner did not index ${file.name}")
+            coroutineContext.ensureActive()
         } catch (t: Throwable) {
             file.delete()
+            if (uri != null) {
+                resolver.delete(uri, null, null)
+            }
             throw t
-        }
-        val uri = scan(file) ?: run {
-            file.delete()
-            throw IOException("Media scanner did not index ${file.name}")
         }
         return SavedAudio(ContentUris.parseId(uri), uri, SaveMethod.LEGACY_FILE_AND_SCAN, file.path)
     }
