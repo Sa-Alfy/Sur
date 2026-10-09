@@ -34,6 +34,7 @@ import io.github.saalfy.sur.R
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.playback.PlayerConnection
 import io.github.saalfy.sur.playback.rememberPlayerUiState
+import io.github.saalfy.sur.ui.download.DownloadScreen
 import io.github.saalfy.sur.ui.player.MiniPlayer
 import io.github.saalfy.sur.ui.player.NowPlayingScreen
 import io.github.saalfy.sur.ui.playlist.PlaylistDetailScreen
@@ -42,9 +43,13 @@ import io.github.saalfy.sur.ui.songs.SongsScreen
 
 private const val TAB_PLAYLISTS = 0
 private const val TAB_SONGS = 1
+private const val TAB_DOWNLOAD = 2
 
 @Composable
-fun SurApp(playerConnection: PlayerConnection) {
+fun SurApp(
+    playerConnection: PlayerConnection,
+    sharedUrl: String? = null,
+) {
     AudioPermissionGate {
         BatteryOptimizationPrompt()
 
@@ -57,11 +62,18 @@ fun SurApp(playerConnection: PlayerConnection) {
         var openPlaylistId by rememberSaveable { mutableStateOf<Long?>(null) }
         var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
 
+        LaunchedEffect(sharedUrl) {
+            if (!sharedUrl.isNullOrBlank()) {
+                tab = TAB_DOWNLOAD
+            }
+        }
+
         // Queue emptied while open: close. A null controller (reconnecting after rotation) is not "empty".
         LaunchedEffect(controller, hasMedia) {
             if (controller != null && !hasMedia) nowPlayingOpen = false
         }
         BackHandler(enabled = openPlaylistId != null) { openPlaylistId = null }
+        BackHandler(enabled = openPlaylistId == null && tab != TAB_PLAYLISTS) { tab = TAB_PLAYLISTS }
 
         Box(Modifier.fillMaxSize()) {
             Scaffold(
@@ -85,6 +97,12 @@ fun SurApp(playerConnection: PlayerConnection) {
                                     icon = { Icon(painterResource(R.drawable.ic_music_note), contentDescription = null) },
                                     label = { Text(stringResource(R.string.tab_songs)) },
                                 )
+                                NavigationBarItem(
+                                    selected = tab == TAB_DOWNLOAD,
+                                    onClick = { tab = TAB_DOWNLOAD },
+                                    icon = { Icon(painterResource(R.drawable.ic_download), contentDescription = null) },
+                                    label = { Text(stringResource(R.string.tab_download)) },
+                                )
                             }
                         } else {
                             Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
@@ -102,7 +120,8 @@ fun SurApp(playerConnection: PlayerConnection) {
                         modifier = modifier,
                     )
                     tab == TAB_PLAYLISTS -> PlaylistsScreen(onOpen = { openPlaylistId = it }, modifier = modifier)
-                    else -> SongsScreen(onPlay = play, modifier = modifier)
+                    tab == TAB_SONGS -> SongsScreen(onPlay = play, modifier = modifier)
+                    else -> DownloadScreen(modifier = modifier, initialUrl = sharedUrl)
                 }
             }
 

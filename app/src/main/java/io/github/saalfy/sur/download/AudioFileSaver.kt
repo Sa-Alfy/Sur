@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.coroutineContext
@@ -75,9 +76,9 @@ class AudioFileSaver(context: Context) {
         var uri: Uri? = null
         try {
             coroutineContext.ensureActive()
-            source.copyTo(file)
+            source.copyTo(file, overwrite = true)
             coroutineContext.ensureActive()
-            uri = scan(file) ?: throw IOException("Media scanner did not index ${file.name}")
+            uri = scan(file)
             coroutineContext.ensureActive()
         } catch (t: Throwable) {
             file.delete()
@@ -86,12 +87,38 @@ class AudioFileSaver(context: Context) {
             }
             throw t
         }
-        return SavedAudio(ContentUris.parseId(uri), uri, SaveMethod.LEGACY_FILE_AND_SCAN, file.path)
+
+        if (uri == null) {
+            uri = queryAudioUri(file)
+        }
+        val songId = uri?.let { runCatching { ContentUris.parseId(it) }.getOrNull() } ?: -1L
+        return SavedAudio(songId, uri ?: Uri.fromFile(file), SaveMethod.LEGACY_FILE_AND_SCAN, file.path)
     }
 
-    private suspend fun scan(file: File): Uri? = suspendCancellableCoroutine { cont ->
-        MediaScannerConnection.scanFile(appContext, arrayOf(file.absolutePath), arrayOf(MIME_M4A)) { _, uri ->
-            if (cont.isActive) cont.resume(uri)
+    private suspend fun scan(file: File): Uri? = withTimeoutOrNull(5000L) {
+        suspendCancellableCoroutine { cont ->
+            MediaScannerConnection.scanFile(appContext, arrayOf(file.absolutePath), arrayOf(MIME_M4A)) { _, uri ->
+                if (cont.isActive) cont.resume(uri)
+            }
+        }
+    }
+
+    private fun queryAudioUri(file: File): Uri? {
+        return try {
+            resolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Media._ID),
+                "${MediaStore.Audio.Media.DATA} = ?",
+                arrayOf(file.absolutePath),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(0)
+                    ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                } else null
+            }
+        } catch (_: Throwable) {
+            null
         }
     }
 

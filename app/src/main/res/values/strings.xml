@@ -62,8 +62,34 @@
     </plurals>
 
     <!-- Downloader -->
+    <string name="tab_download">Download</string>
+    <string name="download_title">Download</string>
+    <string name="download_hint">Paste YouTube link</string>
+    <string name="download_action">Download</string>
+    <string name="download_paste">Paste</string>
+    <string name="download_clear">Clear</string>
+    <string name="download_dismiss">Dismiss</string>
+    <string name="download_saving">Saving to library…</string>
+    <string name="download_done">Saved to music library</string>
+    <string name="download_busy">A download is already running.</string>
+    <string name="download_description">Paste a YouTube link to save audio directly to your music library.</string>
     <string name="download_channel_name">Downloads</string>
     <string name="download_channel_description">Shows progress of music downloads.</string>
     <string name="downloading">Downloading…</string>
     <string name="download_resolving">Resolving…</string>
+    <string name="download_err_no_internet">No internet connection.</string>
+    <string name="download_err_unavailable">This video is private or no longer available.</string>
+    <string name="download_err_age_restricted">Age-restricted videos can\'t be downloaded.</string>
+    <string name="download_err_region_blocked">This video isn\'t available in your country.</string>
+    <string name="download_err_not_downloadable">This video can\'t be downloaded.</string>
+    <string name="download_err_extraction_failed">Couldn\'t read this video. YouTube may have changed; updating Sur usually fixes this.</string>
+    <string name="download_err_not_enough_storage">Not enough free space.</string>
+    <string name="download_err_not_enough_storage_size">Not enough free space (needs about %1$s MB).</string>
+    <string name="download_err_live_stream">Live streams can\'t be downloaded.</string>
+    <string name="download_err_too_long">Videos over 30 minutes aren\'t supported.</string>
+    <string name="download_err_unsupported_playlist">Playlists aren\'t supported yet.</string>
+    <string name="download_err_unsupported_channel">Channels aren\'t supported.</string>
+    <string name="download_err_unsupported_link">That doesn\'t look like a YouTube video link.</string>
+    <string name="download_err_failed">Download failed. Try again.</string>
 </resources>
+

@@ -21,12 +21,14 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Now playing**: album art, seek bar, shuffle, repeat (off / all / one) and a queue view with tap-to-jump, plus a mini player across the app.
 - **Search**: songs by title, artist or album; playlists by name.
 - **Material 3**: dynamic color on Android 12+, a calm teal palette on Android 8–11, and it follows system light/dark.
+- **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, foreground notification controls, and audio tagging.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
 - **Private**: no accounts, cloud, ads or analytics. Connects to the network only when downloading audio you request.
 
 ## Roadmap
 
-- **Downloader**: save audio from a single video link into `Music/Sur`. The engine is complete: foreground `dataSync` service, determinate progress notification with Cancel, `StatFs` storage check, Mp4 remux + tagging, `AudioFileSaver`, and a `StateFlow` + one-shot `SharedFlow` exposed for the UI layer. The download UI screen is in development.
+- **Bitrate & format preferences**: options for audio quality and format in the downloader.
+- **Batch / playlist queueing**: queue multiple downloads sequentially.
 
 ## Requirements
 

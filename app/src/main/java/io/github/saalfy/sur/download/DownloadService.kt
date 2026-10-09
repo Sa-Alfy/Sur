@@ -167,8 +167,13 @@ class DownloadService : Service() {
                     maxProgress = 100,
                     indeterminate = false,
                 )
-                withContext(Dispatchers.IO) {
-                    Mp4Remux.remuxAudio(raw, remuxed)
+                try {
+                    withContext(Dispatchers.IO) {
+                        Mp4Remux.remuxAudio(raw, remuxed)
+                    }
+                } catch (t: Throwable) {
+                    Log.w("SurDownload", "Mp4Remux failed, falling back to raw M4A stream", t)
+                    raw.copyTo(remuxed, overwrite = true)
                 }
 
                 // 5. Mp4TagWriter (with fallback)

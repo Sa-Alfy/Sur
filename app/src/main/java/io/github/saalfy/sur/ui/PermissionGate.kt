@@ -39,6 +39,8 @@ import io.github.saalfy.sur.R
 private val AUDIO_PERMISSION =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
+    } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
     } else {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }

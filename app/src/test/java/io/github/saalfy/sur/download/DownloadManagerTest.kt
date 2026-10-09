@@ -1,5 +1,7 @@
 package io.github.saalfy.sur.download
 
+import io.github.saalfy.sur.R
+import io.github.saalfy.sur.ui.download.stringRes
 import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.downloader.DownloadError
 import org.junit.Assert.assertEquals
@@ -70,19 +72,12 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun notEnoughStorage_omitsSizeWhenZero() {
+    fun notEnoughStorage_stringResDiffersWhenZeroVsNonZero() {
         val errorZero = DownloadError.NotEnoughStorage(0)
-        val messageZero = errorZero.userMessage()
-        assertEquals("Not enough storage", messageZero)
-        assertFalse(messageZero.contains("0"))
-        assertFalse(messageZero.contains("MB"))
-    }
+        assertEquals(R.string.download_err_not_enough_storage, errorZero.stringRes())
 
-    @Test
-    fun notEnoughStorage_includesSizeWhenNonZero() {
-        val errorWithSize = DownloadError.NotEnoughStorage(15 * 1024 * 1024L) // 15 MB
-        val message = errorWithSize.userMessage()
-        assertTrue(message.contains("15.0 MB"))
+        val errorWithSize = DownloadError.NotEnoughStorage(15 * 1024 * 1024L)
+        assertEquals(R.string.download_err_not_enough_storage_size, errorWithSize.stringRes())
     }
 
     @Test
