@@ -22,11 +22,11 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Search**: songs by title, artist or album; playlists by name.
 - **Material 3**: dynamic color on Android 12+, a calm teal palette on Android 8–11, and it follows system light/dark.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
-- **Private**: no accounts, cloud, ads or analytics. Release builds have no internet permission at all.
+- **Private**: no accounts, cloud, ads or analytics. Connects to the network only when downloading audio you request.
 
 ## Roadmap
 
-- **Downloader (in development)**: save audio from a single video link, saved into `Music/Sur`. It lives in a separate `:downloader` module and is only included in debug builds for now; it is **not** in releases yet.
+- **Downloader**: save audio from a single video link into `Music/Sur`. The engine, foreground service, notifications and audio file saver have landed; the download UI screen is in development.
 
 ## Requirements
 
@@ -34,7 +34,8 @@ Android 8.0 (API 26) or newer.
 
 Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
-- **Notifications** (Android 13+, optional): to show playback controls. Music plays even if you decline.
+- **Notifications** (Android 13+, optional): to show playback controls and download progress.
+- **Network access**: used exclusively to download audio streams you request.
 
 Some phones (Oppo, Xiaomi, Vivo, Huawei…) stop background apps aggressively. If music cuts out, allow Sur to run without battery restrictions. Sur offers a shortcut on first launch.
 
@@ -65,4 +66,4 @@ Sur is free software, licensed under the [GNU General Public License v3.0](LICEN
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for details.
 
-Third-party libraries: AndroidX / Jetpack (Apache-2.0) and [Reorderable](https://github.com/Calvin-LL/Reorderable) (Apache-2.0). Debug builds also include [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) (GPL-3.0) and [OkHttp](https://github.com/square/okhttp) (Apache-2.0) for the in-development downloader.
+Third-party libraries: AndroidX / Jetpack (Apache-2.0), [Reorderable](https://github.com/Calvin-LL/Reorderable) (Apache-2.0), [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) (GPL-3.0), and [OkHttp](https://github.com/square/okhttp) (Apache-2.0).

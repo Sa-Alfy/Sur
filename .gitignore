@@ -12,3 +12,8 @@ build/
 *.keystore
 *.jks
 app/build/
+
+# Local agents and instructions
+AGENTS.md
+.agents/
+
