@@ -60,4 +60,10 @@
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
     </plurals>
+
+    <!-- Downloader -->
+    <string name="download_channel_name">Downloads</string>
+    <string name="download_channel_description">Shows progress of music downloads.</string>
+    <string name="downloading">Downloading…</string>
+    <string name="download_resolving">Resolving…</string>
 </resources>

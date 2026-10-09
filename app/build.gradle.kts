@@ -70,8 +70,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.reorderable)
-    // Debug-only until the downloader feature ships (keeps INTERNET out of release builds).
-    debugImplementation(project(":downloader"))
+    implementation(project(":downloader"))
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -9,6 +9,7 @@ import io.github.saalfy.sur.data.SongRepository
 import io.github.saalfy.sur.data.db.SurDatabase
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.RoomPlaylistRepository
+import io.github.saalfy.sur.download.DownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +17,12 @@ import kotlinx.coroutines.SupervisorJob
 class SurApplication : Application() {
     lateinit var container: AppContainer
         private set
+
+    val downloadManager: DownloadManager get() = DownloadManager
+
+    companion object {
+        val downloadManager: DownloadManager get() = DownloadManager
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -37,4 +44,6 @@ class AppContainer(context: Context) {
     val playlistRepository: PlaylistRepository by lazy {
         RoomPlaylistRepository(SurDatabase.build(context).playlistDao(), songRepository)
     }
+
+    val downloadManager: DownloadManager get() = DownloadManager
 }
