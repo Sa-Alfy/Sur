@@ -106,6 +106,7 @@ class NewPipeAudioDownloader(
                             403, 410 -> throw DownloadException(
                                 DownloadError.ExtractionFailed("Stream refused (HTTP ${response.code})"),
                             )
+                            in 500..599 -> throw DownloadException(DownloadError.Failed)
                             else -> throw IOException("HTTP ${response.code}")
                         }
                         if (total == null) total = contentRangeTotal(response.header("Content-Range"))
@@ -175,7 +176,14 @@ class NewPipeAudioDownloader(
             is UnknownHostException, is ConnectException, is NoRouteToHostException,
             is SocketTimeoutException -> DownloadException(DownloadError.NoInternet, t)
             is InterruptedIOException -> CancellationException("Interrupted").apply { initCause(t) }
-            is IOException -> DownloadException(DownloadError.NoInternet, t)
+            is IOException -> {
+                val message = t.message
+                if (message != null && (message.contains("ENOSPC") || message.contains("No space left"))) {
+                    DownloadException(DownloadError.NotEnoughStorage(0), t)
+                } else {
+                    DownloadException(DownloadError.Failed, t)
+                }
+            }
             else -> DownloadException(DownloadError.ExtractionFailed(t.message), t)
         }
     }

@@ -18,6 +18,9 @@ sealed interface DownloadError {
 
     /** YouTube changed something or blocked the request; usually fixed by updating Sur. */
     data class ExtractionFailed(val detail: String?) : DownloadError
+
+    /** Generic fallback: "Download failed, try again". */
+    data object Failed : DownloadError
 }
 
 class DownloadException(val error: DownloadError, cause: Throwable? = null) :
