@@ -5,7 +5,7 @@ import io.github.saalfy.sur.downloader.DownloadError
 sealed interface DownloadState {
     data object Idle : DownloadState
     data object Resolving : DownloadState
-    data class Downloading(val progress: Float) : DownloadState {
+    data class Downloading(val progress: Float, val title: String? = null, val artist: String? = null) : DownloadState {
         constructor(percent: Int) : this(percent / 100f)
     }
     data object Saving : DownloadState

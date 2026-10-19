@@ -5,6 +5,11 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -111,22 +116,26 @@ fun SurApp(
                     }
                 },
             ) { innerPadding ->
-                val modifier = Modifier.padding(innerPadding)
-                val playlistId = openPlaylistId
-                when {
-                    playlistId != null -> PlaylistDetailScreen(
-                        playlistId = playlistId,
-                        onBack = { openPlaylistId = null },
-                        onPlay = play,
-                        modifier = modifier,
-                    )
-                    tab == TAB_PLAYLISTS -> PlaylistsScreen(onOpen = { openPlaylistId = it }, modifier = modifier)
-                    tab == TAB_SONGS -> SongsScreen(
-                        onPlay = play,
-                        currentSongId = { playerState?.currentItem?.songId },
-                        modifier = modifier,
-                    )
-                    else -> DownloadScreen(modifier = modifier, initialUrl = sharedUrl)
+                // Short fade between screens; nothing else animates here.
+                AnimatedContent(
+                    targetState = openPlaylistId to tab,
+                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+                    modifier = Modifier.padding(innerPadding),
+                    label = "screen",
+                ) { (playlistId, shownTab) ->
+                    when {
+                        playlistId != null -> PlaylistDetailScreen(
+                            playlistId = playlistId,
+                            onBack = { openPlaylistId = null },
+                            onPlay = play,
+                        )
+                        shownTab == TAB_PLAYLISTS -> PlaylistsScreen(onOpen = { openPlaylistId = it })
+                        shownTab == TAB_SONGS -> SongsScreen(
+                            onPlay = play,
+                            currentSongId = { playerState?.currentItem?.songId },
+                        )
+                        else -> DownloadScreen(onPlay = play, initialUrl = sharedUrl)
+                    }
                 }
             }
 

@@ -75,6 +75,9 @@
     <string name="download_saving">Saving to library…</string>
     <string name="download_done">Saved to music library</string>
     <string name="download_busy">A download is already running.</string>
+    <string name="download_failed_title">Couldn’t download</string>
+    <string name="download_try_again">Try again</string>
+    <string name="download_not_in_library_yet">Still adding it to your library. Try again in a moment.</string>
     <string name="download_description">Paste a YouTube link to save audio directly to your music library.</string>
     <string name="download_channel_name">Downloads</string>
     <string name="download_channel_description">Shows progress of music downloads.</string>
@@ -101,10 +104,7 @@
     <string name="select_all">All</string>
 
     <!-- Downloader -->
-    <string name="download_audio">Download audio</string>
     <string name="download_description_extended">Paste a YouTube link. Audio is saved to Music/Sur. Only download content you have the right to.</string>
-    <string name="battery_tip_title">Running on Oppo or Xiaomi?</string>
-    <string name="battery_tip_body">Disable battery optimization to prevent background download kills during long sessions.</string>
     <string name="ic_music_note">Music note</string>
 </resources>
 

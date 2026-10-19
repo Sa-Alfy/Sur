@@ -134,7 +134,7 @@ class DownloadService : Service() {
                 rawFile = raw
                 remuxedFile = remuxed
 
-                DownloadManager.updateState(DownloadState.Downloading(0f))
+                DownloadManager.updateState(DownloadState.Downloading(0f, info.title, info.artist))
                 var lastProgressPct = -1
                 withContext(Dispatchers.IO) {
                     downloader.download(info, raw) { done, total ->
@@ -146,7 +146,7 @@ class DownloadService : Service() {
                         val pct = (progressRatio * 100).toInt()
                         if (pct != lastProgressPct) {
                             lastProgressPct = pct
-                            DownloadManager.updateState(DownloadState.Downloading(progressRatio))
+                            DownloadManager.updateState(DownloadState.Downloading(progressRatio, info.title, info.artist))
                             updateNotification(
                                 title = info.title,
                                 text = info.artist,
