@@ -4,7 +4,7 @@
 - Playlists in Room. Home = playlists; Songs/Albums/Artists secondary.
 - Dynamic color on 12+, static fallback on 8-11. Follow system dark/light.
 - Test device: Oppo A1k (Android 9, 2GB RAM, aggressive battery killing). Keep it light.
-- No accounts, cloud, ads, analytics. Downloader module comes later, not now.
+- No accounts, cloud, ads, analytics. Downloader lives in the :downloader module; network only for user-started downloads.
 
 ## Working rules (token discipline)
 - Build with: ./gradlew assembleDebug -q --console=plain 2>&1 | tail -40
