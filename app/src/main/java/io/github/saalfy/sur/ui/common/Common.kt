@@ -69,6 +69,8 @@ fun SearchableTopBar(
     onQueryChange: (String) -> Unit,
     searching: Boolean,
     onSearchingChange: (Boolean) -> Unit,
+    /** Extra buttons shown next to search when not searching. */
+    actions: @Composable () -> Unit = {},
 ) {
     fun close() {
         onSearchingChange(false)
@@ -109,6 +111,7 @@ fun SearchableTopBar(
                 IconButton(onClick = { onSearchingChange(true) }) {
                     Icon(painterResource(R.drawable.ic_search), contentDescription = stringResource(R.string.search))
                 }
+                actions()
             }
         },
     )

@@ -70,6 +70,10 @@ Manual device test checklists live in [`docs/`](docs/).
 
 Sur is intended for personal use to play your local music library. When using the downloader feature, you are solely responsible for ensuring you have the legal right or permission to download the audio content. Sur does not host or distribute any media and is not affiliated with or endorsed by YouTube or Google LLC.
 
+## Developer
+
+Made by **Shariar Ahamed** ([@Sa-Alfy](https://github.com/Sa-Alfy)). In the app, tap the ⓘ icon on the Playlists screen for About.
+
 ## License
 
 Sur is free software, licensed under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only).

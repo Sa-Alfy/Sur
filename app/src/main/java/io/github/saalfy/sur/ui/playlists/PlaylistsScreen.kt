@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.saalfy.sur.R
+import io.github.saalfy.sur.ui.AboutDialog
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.Button
 import androidx.compose.ui.graphics.RectangleShape
@@ -82,6 +83,8 @@ fun PlaylistsScreen(
     val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
     var searching by rememberSaveable { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<PlaylistsDialog?>(null) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    if (showAbout) AboutDialog(onDismiss = { showAbout = false })
 
     Scaffold(
         modifier = modifier,
@@ -93,6 +96,11 @@ fun PlaylistsScreen(
                 onQueryChange = viewModel::onQueryChange,
                 searching = searching,
                 onSearchingChange = { searching = it },
+                actions = {
+                    IconButton(onClick = { showAbout = true }) {
+                        Icon(painterResource(R.drawable.ic_info), contentDescription = stringResource(R.string.about))
+                    }
+                },
             )
         },
     ) { innerPadding ->
