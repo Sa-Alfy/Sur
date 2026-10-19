@@ -93,7 +93,6 @@
     <string name="download_err_failed">Download failed. Try again.</string>
 
     <!-- Now Playing -->
-    <string name="now_playing_from">Now Playing</string>
     <string name="up_next">Up Next</string>
 
     <string name="select_all">All</string>

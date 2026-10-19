@@ -1,7 +1,14 @@
 package io.github.saalfy.sur.ui.player
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +16,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,7 +23,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,13 +30,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,11 +47,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
@@ -52,9 +62,13 @@ import io.github.saalfy.sur.playback.PlayerUiState
 import io.github.saalfy.sur.playback.PositionTicker
 import io.github.saalfy.sur.playback.songId
 import io.github.saalfy.sur.ui.artwork.Artwork
+import io.github.saalfy.sur.ui.artwork.ThumbnailSize
+import io.github.saalfy.sur.ui.artwork.rememberArtworkLoader
 import io.github.saalfy.sur.ui.common.formatDuration
 
 private val LargeArtSize = 360.dp
+private val ArtShape = RoundedCornerShape(24.dp)
+private const val ACCENT_ANIM_MS = 450
 
 /** Full-screen overlay. [state] is null while the controller (re)connects, e.g. right after rotation. */
 @Composable
@@ -62,40 +76,42 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
     var showQueue by rememberSaveable { mutableStateOf(false) }
     BackHandler { if (showQueue) showQueue = false else onClose() }
 
+    // Art-driven accent. The animated States are passed down and only read by the few elements
+    // they color (background draw, seek bar, play button, active toggles), not by this screen.
+    val item = state?.currentItem
+    val scheme = MaterialTheme.colorScheme
+    val loader = rememberArtworkLoader()
+    val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
+    val seed by rememberArtSeed(item?.songId, item?.mediaMetadata?.artworkUri, loader, thumbnailPx)
+    val target = remember(seed, scheme) { accentColorsFor(seed, scheme) }
+    val accent = animateColorAsState(target.accent, tween(ACCENT_ANIM_MS), label = "accent")
+    val onAccent = animateColorAsState(target.onAccent, tween(ACCENT_ANIM_MS), label = "onAccent")
+    val tint = animateColorAsState(target.backgroundTint, tween(ACCENT_ANIM_MS), label = "tint")
+
     // Surface also blocks touches from reaching the screen underneath.
     Surface(Modifier.fillMaxSize()) {
-        if (state == null || state.currentItem == null) return@Surface
+        if (state == null || item == null) return@Surface
         PositionTicker(state, intervalMs = 500)
+        val surface = scheme.surface
 
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            // Top bar: back + context badge + queue/more
+        Column(
+            Modifier
+                .fillMaxSize()
+                // Draw-phase read: color animation never recomposes the screen. No blur (API 31+).
+                .drawWithCache {
+                    val brush = Brush.verticalGradient(0f to tint.value, 0.7f to surface)
+                    onDrawBehind { drawRect(brush) }
+                }
+                .safeDrawingPadding(),
+        ) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onClose) {
-                    Icon(
-                        painterResource(R.drawable.ic_expand_more),
-                        contentDescription = stringResource(R.string.close_player),
-                    )
+                    Icon(painterResource(R.drawable.ic_expand_more), contentDescription = stringResource(R.string.close_player))
                 }
                 Spacer(Modifier.weight(1f))
-                // "Playing from" context badge
-                val title = state.currentItem?.mediaMetadata?.title?.toString().orEmpty()
-                if (title.isNotBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        modifier = Modifier.padding(end = 4.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.now_playing_from),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        )
-                    }
-                }
                 IconButton(onClick = { showQueue = !showQueue }) {
                     Icon(
                         painterResource(R.drawable.ic_queue_music),
@@ -108,17 +124,27 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val landscape = maxWidth > maxHeight
                 val main: @Composable (Modifier) -> Unit = { modifier ->
-                    if (showQueue) QueueList(state, modifier) else ArtPane(state, modifier)
+                    Crossfade(targetState = showQueue, modifier = modifier, label = "artOrQueue") { queue ->
+                        if (queue) QueueList(state, Modifier.fillMaxSize()) else ArtPane(state, Modifier.fillMaxSize())
+                    }
                 }
                 if (landscape) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                         main(Modifier.weight(1f).fillMaxSize())
-                        PlaybackPanel(state, Modifier.weight(1f).fillMaxSize(), showUpNext = false)
+                        PlaybackPanel(
+                            state, accent, onAccent,
+                            Modifier.weight(1f).fillMaxSize().padding(start = 16.dp),
+                            onOpenQueue = null,
+                        )
                     }
                 } else {
                     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
                         main(Modifier.weight(1f).fillMaxWidth())
-                        PlaybackPanel(state, Modifier.fillMaxWidth().padding(bottom = 16.dp), showUpNext = true)
+                        PlaybackPanel(
+                            state, accent, onAccent,
+                            Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            onOpenQueue = { showQueue = true },
+                        )
                     }
                 }
             }
@@ -132,13 +158,18 @@ private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
     BoxWithConstraints(modifier.padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, maxHeight, LargeArtSize)
         if (side > 0.dp) {
-            Artwork(
-                songId = item.songId,
-                artworkUri = item.mediaMetadata.artworkUri,
-                size = side,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.size(side),
-            )
+            // Soft elevation shadow (RenderNode, fine on API 26); artwork crossfades on song change.
+            Box(Modifier.size(side).shadow(16.dp, ArtShape)) {
+                Crossfade(targetState = item.songId to item.mediaMetadata.artworkUri, label = "artwork") { (id, uri) ->
+                    Artwork(
+                        songId = id,
+                        artworkUri = uri,
+                        size = side,
+                        shape = ArtShape,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
     }
 }
@@ -146,53 +177,46 @@ private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
 @Composable
 private fun PlaybackPanel(
     state: PlayerUiState,
+    accent: State<Color>,
+    onAccent: State<Color>,
     modifier: Modifier,
-    showUpNext: Boolean = true,
+    /** Non-null shows the "Up next" card, which opens the queue. */
+    onOpenQueue: (() -> Unit)?,
 ) {
     val item = state.currentItem ?: return
     Column(modifier, verticalArrangement = Arrangement.Center) {
-        // Track title + artist
-        Row(
-            Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = item.mediaMetadata.title?.toString().orEmpty(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = item.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
+        Text(
+            text = item.mediaMetadata.title?.toString().orEmpty(),
+            style = MaterialTheme.typography.headlineSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = item.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
 
-        Spacer(Modifier.height(8.dp))
-        SeekBar(state)
-        Spacer(Modifier.height(4.dp))
-        Controls(state)
+        Spacer(Modifier.height(12.dp))
+        SeekBar(state, accent)
+        Controls(state, accent, onAccent)
 
-        if (showUpNext) {
-            // Up Next card
-            Spacer(Modifier.height(12.dp))
-            UpNextCard(state)
+        if (onOpenQueue != null) {
+            UpNextCard(state, onOpenQueue)
         }
     }
 }
 
 @Composable
-private fun SeekBar(state: PlayerUiState) {
+private fun SeekBar(state: PlayerUiState, accent: State<Color>) {
     // While dragging, show the thumb position instead of the polled position (no jitter).
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val duration = state.durationMs
     val shownPosition = dragFraction?.let { (it * duration).toLong() } ?: state.positionMs
+    val color = accent.value
 
     Slider(
         value = dragFraction ?: state.progress,
@@ -202,42 +226,52 @@ private fun SeekBar(state: PlayerUiState) {
             dragFraction = null
         },
         enabled = duration > 0,
+        colors = SliderDefaults.colors(
+            thumbColor = color,
+            activeTrackColor = color,
+            inactiveTrackColor = color.copy(alpha = 0.24f),
+        ),
     )
     Row(Modifier.fillMaxWidth()) {
-        Text(formatDuration(shownPosition), style = MaterialTheme.typography.labelMedium)
+        val timeColor = MaterialTheme.colorScheme.onSurfaceVariant
+        Text(formatDuration(shownPosition), style = MaterialTheme.typography.labelMedium, color = timeColor)
         Spacer(Modifier.weight(1f))
-        Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium)
+        Text(formatDuration(duration), style = MaterialTheme.typography.labelMedium, color = timeColor)
     }
 }
 
 @Composable
-private fun Controls(state: PlayerUiState) {
-    val active = MaterialTheme.colorScheme.primary
-    val inactive = MaterialTheme.colorScheme.onSurfaceVariant
+private fun Controls(state: PlayerUiState, accent: State<Color>, onAccent: State<Color>) {
+    val quiet = MaterialTheme.colorScheme.onSurfaceVariant
+    val main = MaterialTheme.colorScheme.onSurface
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = state::toggleShuffle) {
             Icon(
                 painterResource(R.drawable.ic_shuffle),
                 contentDescription = stringResource(if (state.shuffleEnabled) R.string.shuffle_on else R.string.shuffle_off),
-                tint = if (state.shuffleEnabled) active else inactive,
+                tint = if (state.shuffleEnabled) accent.value else quiet,
             )
         }
-        IconButton(onClick = state::previous) {
-            Icon(painterResource(R.drawable.ic_skip_previous), contentDescription = stringResource(R.string.previous))
-        }
-        FilledIconButton(onClick = state::playPause, modifier = Modifier.size(64.dp)) {
+        IconButton(onClick = state::previous, modifier = Modifier.size(56.dp)) {
             Icon(
-                painterResource(if (state.showPlayButton) R.drawable.ic_play else R.drawable.ic_pause),
-                contentDescription = stringResource(if (state.showPlayButton) R.string.play else R.string.pause),
+                painterResource(R.drawable.ic_skip_previous),
+                contentDescription = stringResource(R.string.previous),
+                tint = main,
                 modifier = Modifier.size(32.dp),
             )
         }
-        IconButton(onClick = state::next, enabled = state.hasNext) {
-            Icon(painterResource(R.drawable.ic_skip_next), contentDescription = stringResource(R.string.next))
+        PlayPauseButton(state, accent, onAccent)
+        IconButton(onClick = state::next, enabled = state.hasNext, modifier = Modifier.size(56.dp)) {
+            Icon(
+                painterResource(R.drawable.ic_skip_next),
+                contentDescription = stringResource(R.string.next),
+                tint = if (state.hasNext) main else main.copy(alpha = 0.38f),
+                modifier = Modifier.size(32.dp),
+            )
         }
         IconButton(onClick = state::cycleRepeatMode) {
             val (icon, label) = when (state.repeatMode) {
@@ -248,69 +282,79 @@ private fun Controls(state: PlayerUiState) {
             Icon(
                 painterResource(icon),
                 contentDescription = stringResource(label),
-                tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) inactive else active,
+                tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) quiet else accent.value,
             )
         }
     }
 }
 
 @Composable
-private fun UpNextCard(state: PlayerUiState) {
+private fun PlayPauseButton(state: PlayerUiState, accent: State<Color>, onAccent: State<Color>) {
+    FilledIconButton(
+        onClick = state::playPause,
+        modifier = Modifier.size(72.dp),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = accent.value,
+            contentColor = onAccent.value,
+        ),
+    ) {
+        AnimatedContent(
+            targetState = state.showPlayButton,
+            transitionSpec = {
+                (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.7f)) togetherWith fadeOut(tween(90))
+            },
+            label = "playPause",
+        ) { showPlay ->
+            Icon(
+                painterResource(if (showPlay) R.drawable.ic_play else R.drawable.ic_pause),
+                contentDescription = stringResource(if (showPlay) R.string.play else R.string.pause),
+                modifier = Modifier.size(36.dp),
+            )
+        }
+    }
+}
+
+/** Next song in play order (follows shuffle). Tapping opens the queue. */
+@Composable
+private fun UpNextCard(state: PlayerUiState, onOpenQueue: () -> Unit) {
     val queue = state.queue
-    val nextIndex = state.currentIndex + 1
-    val nextItem = queue.firstOrNull { it.windowIndex == nextIndex }?.mediaItem ?: return
+    val position = queue.indexOfFirst { it.windowIndex == state.currentIndex }
+    if (position < 0) return
+    val next = queue.getOrNull(position + 1)?.mediaItem ?: return
 
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        onClick = onOpenQueue,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_queue_music),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-            ) {
+        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Artwork(
+                songId = next.songId,
+                artworkUri = next.mediaMetadata.artworkUri,
+                size = ThumbnailSize,
+                modifier = Modifier.size(40.dp),
+            )
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(
                     text = stringResource(R.string.up_next),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = nextItem.mediaMetadata.title?.toString().orEmpty(),
+                    text = next.mediaMetadata.title?.toString().orEmpty(),
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = nextItem.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
+                    text = next.mediaMetadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(
-                painterResource(R.drawable.ic_expand_more),
-                contentDescription = stringResource(R.string.queue),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
         }
     }
 }
@@ -329,7 +373,7 @@ private fun QueueList(state: PlayerUiState, modifier: Modifier) {
                 .fillMaxWidth()
                 .heightIn(max = maxHeight),
         ) {
-            items(queue, key = { it.windowIndex }) { entry ->
+            items(queue, key = { it.windowIndex }, contentType = { "queue" }) { entry ->
                 val current = entry.windowIndex == state.currentIndex
                 ListItem(
                     modifier = Modifier.clickable { state.jumpTo(entry.windowIndex) },

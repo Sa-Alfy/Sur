@@ -40,6 +40,15 @@ import kotlinx.coroutines.withContext
 /** Small on purpose: the test device has 2GB RAM. */
 private const val ARTWORK_CACHE_BYTES = 6 * 1024 * 1024
 
+/**
+ * One thumbnail size for song rows, the mini player, playlist mosaics and the Now Playing color
+ * seed, so they all hit the same cache entry (key = songId@px) instead of decoding per size.
+ */
+val ThumbnailSize = 48.dp
+
+/** At most two decodes at once: fast scrolling must not open dozens of files on a 2GB phone. */
+private val decodeDispatcher = Dispatchers.IO.limitedParallelism(2)
+
 /** Loads downsampled album art from MediaStore with a small in-memory cache. */
 class ArtworkLoader(private val context: Context) {
     private val resolver: ContentResolver = context.applicationContext.contentResolver
@@ -57,7 +66,7 @@ class ArtworkLoader(private val context: Context) {
         val key = key(songId, sizePx)
         cache.get(key)?.let { return it }
         if (missing.get(key) != null) return null
-        val bitmap = withContext(Dispatchers.IO) { runCatching { decode(songId, artworkUri, sizePx) }.getOrNull() }
+        val bitmap = withContext(decodeDispatcher) { runCatching { decode(songId, artworkUri, sizePx) }.getOrNull() }
         if (bitmap != null) cache.put(key, bitmap) else missing.put(key, true)
         return bitmap
     }
@@ -116,7 +125,16 @@ class ArtworkLoader(private val context: Context) {
     }
 }
 
-/** Album art for a song, or a music-note placeholder. [size] is the largest size it will be drawn at. */
+@Composable
+fun rememberArtworkLoader(): ArtworkLoader {
+    val context = LocalContext.current
+    return remember { (context.applicationContext as SurApplication).container.artworkLoader }
+}
+
+/**
+ * Album art for a song, or a music-note placeholder. [size] is the largest size it will be drawn
+ * at. In lazy lists, resolve [loader] and [sizePx] once in the parent and pass them in.
+ */
 @Composable
 fun Artwork(
     songId: Long?,
@@ -124,10 +142,9 @@ fun Artwork(
     size: Dp,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(8.dp),
+    loader: ArtworkLoader = rememberArtworkLoader(),
+    sizePx: Int = with(LocalDensity.current) { size.roundToPx() },
 ) {
-    val context = LocalContext.current
-    val loader = remember { (context.applicationContext as SurApplication).container.artworkLoader }
-    val sizePx = with(LocalDensity.current) { size.roundToPx() }
     val bitmap by produceState(
         initialValue = songId?.let { loader.cached(it, sizePx) },
         songId,
