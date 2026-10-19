@@ -94,7 +94,7 @@ fun SearchableTopBar(
                 )
                 LaunchedEffect(Unit) { focusRequester.requestFocus() }
             } else {
-                Text(title)
+                Text(title, style = MaterialTheme.typography.headlineMedium)
             }
         },
         navigationIcon = {
