@@ -62,6 +62,10 @@ The debug APK is written to `app/build/outputs/apk/debug/`. Release builds (`./g
 
 Manual device test checklists live in [`docs/`](docs/).
 
+## Disclaimer
+
+Sur is intended for personal use to play your local music library. When using the downloader feature, you are solely responsible for ensuring you have the legal right or permission to download the audio content. Sur does not host or distribute any media and is not affiliated with or endorsed by YouTube or Google LLC.
+
 ## License
 
 Sur is free software, licensed under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only).
