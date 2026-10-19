@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -112,12 +113,12 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
                 if (landscape) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                         main(Modifier.weight(1f).fillMaxSize())
-                        PlaybackPanel(state, Modifier.weight(1f).fillMaxSize())
+                        PlaybackPanel(state, Modifier.weight(1f).fillMaxSize(), showUpNext = false)
                     }
                 } else {
                     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
                         main(Modifier.weight(1f).fillMaxWidth())
-                        PlaybackPanel(state, Modifier.fillMaxWidth().padding(bottom = 16.dp))
+                        PlaybackPanel(state, Modifier.fillMaxWidth().padding(bottom = 16.dp), showUpNext = true)
                     }
                 }
             }
@@ -128,22 +129,26 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
 @Composable
 private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
     val item = state.currentItem ?: return
-    Box(modifier.padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-        Artwork(
-            songId = item.songId,
-            artworkUri = item.mediaMetadata.artworkUri,
-            size = LargeArtSize,
-            modifier = Modifier
-                .widthIn(max = LargeArtSize)
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(20.dp)),
-        )
+    BoxWithConstraints(modifier.padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+        val side = minOf(maxWidth, maxHeight, LargeArtSize)
+        if (side > 0.dp) {
+            Artwork(
+                songId = item.songId,
+                artworkUri = item.mediaMetadata.artworkUri,
+                size = side,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.size(side),
+            )
+        }
     }
 }
 
 @Composable
-private fun PlaybackPanel(state: PlayerUiState, modifier: Modifier) {
+private fun PlaybackPanel(
+    state: PlayerUiState,
+    modifier: Modifier,
+    showUpNext: Boolean = true,
+) {
     val item = state.currentItem ?: return
     Column(modifier, verticalArrangement = Arrangement.Center) {
         // Track title + artist
@@ -174,9 +179,11 @@ private fun PlaybackPanel(state: PlayerUiState, modifier: Modifier) {
         Spacer(Modifier.height(4.dp))
         Controls(state)
 
-        // Up Next card
-        Spacer(Modifier.height(12.dp))
-        UpNextCard(state)
+        if (showUpNext) {
+            // Up Next card
+            Spacer(Modifier.height(12.dp))
+            UpNextCard(state)
+        }
     }
 }
 
@@ -315,29 +322,36 @@ private fun QueueList(state: PlayerUiState, modifier: Modifier) {
         initialFirstVisibleItemIndex = queue.indexOfFirst { it.windowIndex == state.currentIndex }.coerceAtLeast(0),
     )
     val unknownArtist = stringResource(R.string.unknown_artist)
-    LazyColumn(state = listState, modifier = modifier) {
-        items(queue, key = { it.windowIndex }) { entry ->
-            val current = entry.windowIndex == state.currentIndex
-            ListItem(
-                modifier = Modifier.clickable { state.jumpTo(entry.windowIndex) },
-                colors = ListItemDefaults.colors(
-                    containerColor = if (current) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                ),
-                headlineContent = {
-                    Text(
-                        entry.mediaItem.mediaMetadata.title?.toString().orEmpty(),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        entry.mediaItem.mediaMetadata.artist?.toString() ?: unknownArtist,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-            )
+    BoxWithConstraints(modifier) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxHeight),
+        ) {
+            items(queue, key = { it.windowIndex }) { entry ->
+                val current = entry.windowIndex == state.currentIndex
+                ListItem(
+                    modifier = Modifier.clickable { state.jumpTo(entry.windowIndex) },
+                    colors = ListItemDefaults.colors(
+                        containerColor = if (current) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    ),
+                    headlineContent = {
+                        Text(
+                            entry.mediaItem.mediaMetadata.title?.toString().orEmpty(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            entry.mediaItem.mediaMetadata.artist?.toString() ?: unknownArtist,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                )
+            }
         }
     }
 }
