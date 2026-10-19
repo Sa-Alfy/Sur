@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Sur Logo" width="128" />
+</p>
+
 # Sur
 
 A lightweight, open-source Android music player for your local library.

@@ -3,8 +3,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Simple music note, kept inside the 66dp adaptive-icon safe zone -->
+    <!-- Sound waves flowing into the note, within the 66dp safe zone (21-87) -->
+    <path
+        android:strokeColor="#80E8DD"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M30,50 C36,44 44,44 50,50 C54,54 58,58 64,58" />
+    <path
+        android:strokeColor="#80E8DD"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M30,58 C36,52 44,52 50,58 C54,62 58,66 64,66" />
+    <path
+        android:strokeColor="#80E8DD"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M32,66 C37,60 44,60 50,66 C53,69 56,71 60,71" />
+    <!-- Music note -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M60,30 L60,60.5 C58.4,59.6 56.6,59 54.5,59 C50.4,59 47,61.5 47,64.5 C47,67.5 50.4,70 54.5,70 C58.6,70 62,67.5 62,64.5 L62,40 L72,38 L72,32 Z" />
+        android:pathData="M66,35 L66,66 C64.5,65 62.5,64.5 60,64.5 C55.5,64.5 52,67 52,70.5 C52,74 55.5,76.5 60,76.5 C64.5,76.5 68,74 68,70.5 L68,44 L78,41 L78,35 Z" />
 </vector>
