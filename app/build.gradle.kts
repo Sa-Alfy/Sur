@@ -13,8 +13,8 @@ android {
         applicationId = "io.github.saalfy.sur"
         minSdk = 26
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.3.1"
     }
 
     // Release signing comes from Gradle properties outside the repo (e.g. ~/.gradle/gradle.properties).
@@ -33,11 +33,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (releaseStoreFile != null) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // Never fall back to the debug key: users could not update over a debug-signed APK.
+            // Without the release key properties, release packaging fails (see check below).
+            if (releaseStoreFile != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -83,4 +81,16 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+}
+
+// Refuse to package a release without Sur's release key instead of producing an APK that
+// can't update existing installs.
+gradle.taskGraph.whenReady {
+    val packagingRelease = allTasks.any { it.path == ":app:packageRelease" }
+    if (packagingRelease && providers.gradleProperty("SUR_RELEASE_STORE_FILE").orNull == null) {
+        throw GradleException(
+            "Release build needs SUR_RELEASE_STORE_FILE / _STORE_PASSWORD / _KEY_ALIAS / _KEY_PASSWORD " +
+                "Gradle properties (Sur's release key). Refusing to build an unsigned or debug-signed release.",
+        )
+    }
 }

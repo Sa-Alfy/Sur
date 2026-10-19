@@ -6,11 +6,11 @@
 
 A lightweight, open-source Android music player for your local library.
 
-> **Work in progress.** Usable day to day. Latest version: **v0.3.0**. Get it from [Releases](https://github.com/Sa-Alfy/Sur/releases).
+> **Work in progress.** Usable day to day. Latest version: **v0.3.1**. Get it from [Releases](https://github.com/Sa-Alfy/Sur/releases).
 
 ## Install
 
-1. Download `Sur-v0.3.0.apk` from the [latest release](https://github.com/Sa-Alfy/Sur/releases/latest) on your phone.
+1. Download `Sur-v0.3.1.apk` from the [latest release](https://github.com/Sa-Alfy/Sur/releases/latest) on your phone.
 2. Open it and allow installing from this source when Android asks.
 3. Launch Sur and allow access to your audio files.
 
