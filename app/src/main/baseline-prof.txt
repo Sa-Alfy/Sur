@@ -1,0 +1,26 @@
+# Hand-written Baseline Profile (wildcards are expanded at build time and rewritten through R8).
+# Asks ART to compile these ahead of time instead of interpreting/JIT-ing them on first use,
+# which is what makes scrolling and screen changes stutter on slow phones (e.g. Android 9, 2GB).
+# Cost: a few MB of compiled code on the device; no behavior change.
+
+# Sur itself
+HSPLio/github/saalfy/sur/**->**(**)**
+Lio/github/saalfy/sur/**;
+
+# UI toolkit: Compose runtime, UI, foundation (lists), animation, Material 3
+HSPLandroidx/compose/**->**(**)**
+Landroidx/compose/**;
+
+# Activity / lifecycle / ViewModel glue used on every screen
+HSPLandroidx/activity/**->**(**)**
+HSPLandroidx/lifecycle/**->**(**)**
+
+# Playback (ExoPlayer + session) and the controller the UI talks to
+HSPLandroidx/media3/**->**(**)**
+Landroidx/media3/**;
+
+# Coroutines/flows behind every list and player update
+HSPLkotlinx/coroutines/**->**(**)**
+
+# Playlist drag-to-reorder
+HSPLsh/calvin/reorderable/**->**(**)**
