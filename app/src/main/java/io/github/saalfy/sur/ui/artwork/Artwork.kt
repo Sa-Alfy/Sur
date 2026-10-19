@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.util.LruCache
@@ -40,7 +41,7 @@ import kotlinx.coroutines.withContext
 private const val ARTWORK_CACHE_BYTES = 6 * 1024 * 1024
 
 /** Loads downsampled album art from MediaStore with a small in-memory cache. */
-class ArtworkLoader(context: Context) {
+class ArtworkLoader(private val context: Context) {
     private val resolver: ContentResolver = context.applicationContext.contentResolver
 
     private val cache = object : LruCache<String, Bitmap>(ARTWORK_CACHE_BYTES) {
@@ -65,10 +66,41 @@ class ArtworkLoader(context: Context) {
 
     private fun decode(songId: Long, artworkUri: Uri?, sizePx: Int): Bitmap? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            resolver.loadThumbnail(MediaStoreUris.song(songId), Size(sizePx, sizePx), null)
+            runCatching {
+                resolver.loadThumbnail(MediaStoreUris.song(songId), Size(sizePx, sizePx), null)
+            }.getOrNull() ?: decodeEmbedded(songId, sizePx)
         } else {
-            artworkUri?.let { decodeSampled(it, sizePx) }
+            (artworkUri?.let { decodeSampled(it, sizePx) }) ?: decodeEmbedded(songId, sizePx)
         }
+
+    private fun decodeEmbedded(songId: Long, sizePx: Int): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, MediaStoreUris.song(songId))
+            val picture = retriever.embeddedPicture ?: return null
+            decodeBytesSampled(picture, sizePx)
+        } catch (_: Exception) {
+            null
+        } finally {
+            try {
+                retriever.release()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun decodeBytesSampled(bytes: ByteArray, sizePx: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= sizePx && bounds.outHeight / (sample * 2) >= sizePx) sample *= 2
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    }
 
     private fun decodeSampled(uri: Uri, sizePx: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
