@@ -2,11 +2,11 @@
 
 A lightweight, open-source Android music player for your local library.
 
-> **Work in progress.** Usable day to day. Latest version: **v0.1.0**. Get it from [Releases](https://github.com/Sa-Alfy/Sur/releases).
+> **Work in progress.** Usable day to day. Latest version: **v0.2.0**. Get it from [Releases](https://github.com/Sa-Alfy/Sur/releases).
 
 ## Install
 
-1. Download `Sur-v0.1.0.apk` from the [latest release](https://github.com/Sa-Alfy/Sur/releases/latest) on your phone.
+1. Download `Sur-v0.2.0.apk` from the [latest release](https://github.com/Sa-Alfy/Sur/releases/latest) on your phone.
 2. Open it and allow installing from this source when Android asks.
 3. Launch Sur and allow access to your audio files.
 
@@ -16,12 +16,12 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 ## Features
 
 - **Plays your local music**: scans the device library via MediaStore (skips ringtones, notification sounds and clips under 30 s).
-- **Playlists first**: the home screen is your playlists. Create, rename, delete, drag to reorder, and add songs one at a time or by multi-select.
+- **Playlists first**: the home screen is your playlists with 2×2 cover mosaics. Create, rename, delete, drag to reorder, and add songs one at a time or by multi-select.
 - **Background playback**: Media3 service with notification and lock screen controls, audio focus, and pause when headphones are unplugged.
-- **Now playing**: album art, seek bar, shuffle, repeat (off / all / one) and a queue view with tap-to-jump, plus a mini player across the app.
+- **Now playing**: art-tinted background gradient and controls via Palette, smooth crossfading, seek bar, shuffle, repeat (off / all / one), tap-to-jump queue view, and a persistent mini player.
 - **Search**: songs by title, artist or album; playlists by name.
-- **Material 3**: dynamic color on Android 12+, a calm teal palette on Android 8–11, and it follows system light/dark.
-- **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, foreground notification controls, and audio tagging.
+- **Material 3**: dynamic color on Android 12+, an accessible teal fallback palette on Android 8–11 with verified WCAG contrast, and it follows system light/dark.
+- **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, song metadata, foreground notification controls, and audio tagging.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
 - **Private**: no accounts, cloud, ads or analytics. Connects to the network only when downloading audio you request.
 
@@ -43,7 +43,7 @@ Some phones (Oppo, Xiaomi, Vivo, Huawei…) stop background apps aggressively. I
 
 ## Tech
 
-Kotlin, Jetpack Compose, Material 3, Media3 (ExoPlayer + MediaSessionService), Room, and NewPipe Extractor + OkHttp for the downloader.
+Kotlin, Jetpack Compose, Material 3, Media3 (ExoPlayer + MediaSessionService), Room, AndroidX Palette, and NewPipe Extractor + OkHttp for the downloader.
 `minSdk` 26, `targetSdk` 37. Package: `io.github.saalfy.sur`.
 
 ## Build
