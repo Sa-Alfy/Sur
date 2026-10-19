@@ -34,6 +34,7 @@ import io.github.saalfy.sur.R
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.playback.PlayerConnection
 import io.github.saalfy.sur.playback.rememberPlayerUiState
+import io.github.saalfy.sur.playback.songId
 import io.github.saalfy.sur.ui.download.DownloadScreen
 import io.github.saalfy.sur.ui.player.MiniPlayer
 import io.github.saalfy.sur.ui.player.NowPlayingScreen
@@ -120,7 +121,11 @@ fun SurApp(
                         modifier = modifier,
                     )
                     tab == TAB_PLAYLISTS -> PlaylistsScreen(onOpen = { openPlaylistId = it }, modifier = modifier)
-                    tab == TAB_SONGS -> SongsScreen(onPlay = play, modifier = modifier)
+                    tab == TAB_SONGS -> SongsScreen(
+                        onPlay = play,
+                        currentSongId = { playerState?.currentItem?.songId },
+                        modifier = modifier,
+                    )
                     else -> DownloadScreen(modifier = modifier, initialUrl = sharedUrl)
                 }
             }

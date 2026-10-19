@@ -17,7 +17,8 @@ abstract class PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     abstract fun observePlaylist(id: Long): Flow<PlaylistEntity?>
 
-    @Query("SELECT playlistId, songId FROM playlist_entries")
+    // Ordered so the first entries of each playlist can be used as its cover mosaic.
+    @Query("SELECT playlistId, songId FROM playlist_entries ORDER BY playlistId, position")
     abstract fun observeEntryRefs(): Flow<List<EntryRef>>
 
     @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY position")

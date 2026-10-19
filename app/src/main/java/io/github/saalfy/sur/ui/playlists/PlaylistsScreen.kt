@@ -1,7 +1,6 @@
 package io.github.saalfy.sur.ui.playlists
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +44,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.saalfy.sur.R
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.Button
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
+import io.github.saalfy.sur.data.MediaStoreUris
+import io.github.saalfy.sur.data.Song
+import io.github.saalfy.sur.ui.artwork.Artwork
+import io.github.saalfy.sur.ui.artwork.ArtworkLoader
+import io.github.saalfy.sur.ui.artwork.ThumbnailSize
+import io.github.saalfy.sur.ui.artwork.rememberArtworkLoader
 import io.github.saalfy.sur.data.playlist.Playlist
 import io.github.saalfy.sur.data.playlist.PlaylistSummary
 import io.github.saalfy.sur.ui.common.CenteredMessage
@@ -67,6 +78,8 @@ fun PlaylistsScreen(
 ) {
     val playlists by viewModel.visiblePlaylists.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val loader = rememberArtworkLoader()
+    val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
     var searching by rememberSaveable { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<PlaylistsDialog?>(null) }
 
@@ -88,7 +101,7 @@ fun PlaylistsScreen(
             when {
                 list == null -> Unit
                 list.isEmpty() && query.isNotBlank() -> CenteredMessage(stringResource(R.string.no_results, query.trim()))
-                list.isEmpty() -> CenteredMessage(stringResource(R.string.no_playlists))
+                list.isEmpty() -> EmptyPlaylists(onCreate = { dialog = PlaylistsDialog.Create })
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     item {
                         Row(
@@ -110,9 +123,12 @@ fun PlaylistsScreen(
                             }
                         }
                     }
-                    items(list, key = { it.playlist.id }) { summary ->
+                    items(list, key = { it.playlist.id }, contentType = { "playlist" }) { summary ->
                         PlaylistCard(
                             summary = summary,
+                            loader = loader,
+                            thumbnailPx = thumbnailPx,
+                            modifier = Modifier.animateItem(),
                             onClick = { onOpen(summary.playlist.id) },
                             onRename = { dialog = PlaylistsDialog.Rename(summary.playlist) },
                             onDelete = { dialog = PlaylistsDialog.Delete(summary.playlist) },
@@ -150,58 +166,68 @@ fun PlaylistsScreen(
 }
 
 @Composable
+private fun EmptyPlaylists(onCreate: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_queue_music),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(36.dp),
+            )
+        }
+        Text(stringResource(R.string.no_playlists), style = MaterialTheme.typography.titleLarge)
+        Text(
+            stringResource(R.string.no_playlists_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Button(onClick = onCreate, modifier = Modifier.padding(top = 4.dp)) {
+            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.create_playlist))
+        }
+    }
+}
+
+private val CoverSize = 56.dp
+
+@Composable
 private fun PlaylistCard(
     summary: PlaylistSummary,
+    loader: ArtworkLoader,
+    thumbnailPx: Int,
+    modifier: Modifier,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Card(
-        modifier = Modifier
+        onClick = onClick,
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Drag handle
-            Icon(
-                painterResource(R.drawable.ic_drag_handle),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-
-            // Playlist icon thumbnail
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_queue_music),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-
-            // Title + track count
-            Column(Modifier.weight(1f)) {
+            CoverMosaic(summary.coverSongs, loader, thumbnailPx)
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                 Text(
                     text = summary.playlist.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -210,22 +236,10 @@ private fun PlaylistCard(
                 )
                 Text(
                     text = pluralStringResource(R.plurals.song_count, summary.songCount, summary.songCount),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-
-            // Play button
-            IconButton(onClick = onClick) {
-                Icon(
-                    painterResource(R.drawable.ic_play),
-                    contentDescription = stringResource(R.string.play),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-
-            // More options
             Box {
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(
@@ -247,4 +261,55 @@ private fun PlaylistCard(
             }
         }
     }
+}
+
+/**
+ * Cover built from the playlist's first songs: none → icon tile, one → that song's art,
+ * two or more → 2x2 grid with plain tiles for empty slots. Reuses the shared thumbnail cache.
+ */
+@Composable
+private fun CoverMosaic(songs: List<Song>, loader: ArtworkLoader, thumbnailPx: Int) {
+    val shape = RoundedCornerShape(12.dp)
+    val modifier = Modifier.size(CoverSize)
+    when (songs.size) {
+        0 -> Box(
+            modifier.clip(shape).background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_queue_music),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+        }
+        1 -> MosaicTile(songs[0], loader, thumbnailPx, shape, modifier)
+        else -> Column(modifier.clip(shape)) {
+            for (row in 0 until 2) {
+                Row(Modifier.weight(1f)) {
+                    for (column in 0 until 2) {
+                        val tile = Modifier.weight(1f).fillMaxHeight()
+                        val song = songs.getOrNull(row * 2 + column)
+                        if (song != null) {
+                            MosaicTile(song, loader, thumbnailPx, RectangleShape, tile)
+                        } else {
+                            Box(tile.background(MaterialTheme.colorScheme.surfaceContainerHighest))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MosaicTile(song: Song, loader: ArtworkLoader, thumbnailPx: Int, shape: Shape, modifier: Modifier) {
+    Artwork(
+        songId = song.id,
+        artworkUri = MediaStoreUris.albumArt(song.albumId),
+        size = ThumbnailSize,
+        shape = shape,
+        loader = loader,
+        sizePx = thumbnailPx,
+        modifier = modifier,
+    )
 }

@@ -46,7 +46,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.saalfy.sur.R
+import io.github.saalfy.sur.data.MediaStoreUris
 import io.github.saalfy.sur.data.Song
+import io.github.saalfy.sur.ui.artwork.Artwork
+import io.github.saalfy.sur.ui.artwork.ArtworkLoader
+import io.github.saalfy.sur.ui.artwork.ThumbnailSize
+import io.github.saalfy.sur.ui.artwork.rememberArtworkLoader
+import androidx.compose.ui.platform.LocalDensity
 import io.github.saalfy.sur.ui.common.AddToPlaylistDialog
 import io.github.saalfy.sur.ui.common.CenteredMessage
 import io.github.saalfy.sur.ui.common.SearchableTopBar
@@ -56,10 +62,15 @@ import io.github.saalfy.sur.ui.common.formatDuration
 @Composable
 fun SongsScreen(
     onPlay: (songs: List<Song>, startIndex: Int) -> Unit,
+    /** Read inside each row, so a song change recomposes only the visible rows. */
+    currentSongId: () -> Long?,
     modifier: Modifier = Modifier,
     viewModel: SongsViewModel = viewModel(factory = SongsViewModel.Factory),
 ) {
     val context = LocalContext.current
+    // Resolved once here instead of per lazy item.
+    val loader = rememberArtworkLoader()
+    val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
     val songs by viewModel.songs.collectAsStateWithLifecycle()
     val visibleSongs by viewModel.visibleSongs.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -148,10 +159,14 @@ fun SongsScreen(
                 list.isEmpty() && query.isNotBlank() -> CenteredMessage(stringResource(R.string.no_results, query.trim()))
                 list.isEmpty() -> CenteredMessage(stringResource(R.string.library_empty))
                 else -> LazyColumn(Modifier.fillMaxSize()) {
-                    itemsIndexed(list, key = { _, song -> song.id }) { index, song ->
+                    itemsIndexed(list, key = { _, song -> song.id }, contentType = { _, _ -> "song" }) { index, song ->
                         val isSelected = song.id in selected
                         SongRow(
                             song = song,
+                            isCurrent = { currentSongId() == song.id },
+                            loader = loader,
+                            thumbnailPx = thumbnailPx,
+                            modifier = Modifier.animateItem(),
                             selecting = selecting,
                             isSelected = isSelected,
                             onClick = {
@@ -193,6 +208,11 @@ fun SongsScreen(
 @Composable
 private fun SongRow(
     song: Song,
+    /** Read here, in the leaf, so a song change only recomposes affected rows. */
+    isCurrent: () -> Boolean,
+    loader: ArtworkLoader,
+    thumbnailPx: Int,
+    modifier: Modifier,
     selecting: Boolean,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -200,9 +220,40 @@ private fun SongRow(
     onAddToPlaylist: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val accent = MaterialTheme.colorScheme.primary
+    val current = isCurrent()
     ListItem(
-        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        headlineContent = { Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        leadingContent = {
+            Artwork(
+                songId = song.id,
+                artworkUri = MediaStoreUris.albumArt(song.albumId),
+                size = ThumbnailSize,
+                shape = RoundedCornerShape(10.dp),
+                loader = loader,
+                sizePx = thumbnailPx,
+                modifier = Modifier.size(ThumbnailSize),
+            )
+        },
+        headlineContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (current) {
+                    Icon(
+                        painterResource(R.drawable.ic_now_playing),
+                        contentDescription = stringResource(R.string.now_playing_indicator),
+                        tint = accent,
+                        modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                    )
+                }
+                Text(
+                    song.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (current) accent else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        },
         supportingContent = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -214,11 +265,8 @@ private fun SongRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                Text("·", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    text = formatDuration(song.durationMs),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                Text("·")
+                Text(text = formatDuration(song.durationMs))
             }
         },
         trailingContent = {

@@ -2,6 +2,7 @@ package io.github.saalfy.sur.data.playlist
 
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.data.SongRepository
+import io.github.saalfy.sur.data.db.EntryRef
 import io.github.saalfy.sur.data.db.PlaylistDao
 import io.github.saalfy.sur.data.db.PlaylistEntity
 import kotlinx.coroutines.flow.Flow
@@ -18,8 +19,7 @@ class RoomPlaylistRepository(
 
     override val playlists: Flow<List<PlaylistSummary>> =
         combine(dao.observePlaylists(), dao.observeEntryRefs(), songsById) { playlists, refs, songs ->
-            val counts = refs.filter { it.songId in songs }.groupingBy { it.playlistId }.eachCount()
-            playlists.map { PlaylistSummary(it.toModel(), counts[it.id] ?: 0) }
+            summarize(playlists.map { it.toModel() }, refs, songs)
         }
 
     override fun playlist(id: Long): Flow<Playlist?> = dao.observePlaylist(id).map { it?.toModel() }
@@ -44,4 +44,17 @@ class RoomPlaylistRepository(
         dao.moveEntry(playlistId, fromEntryId, toEntryId)
 
     private fun PlaylistEntity.toModel() = Playlist(id = id, name = name, createdAt = createdAt)
+}
+
+/**
+ * Counts and cover songs per playlist. [refs] must be ordered by (playlistId, position).
+ * Songs no longer on the device are skipped (and stay in the database).
+ */
+internal fun summarize(playlists: List<Playlist>, refs: List<EntryRef>, songs: Map<Long, Song>): List<PlaylistSummary> {
+    val present = refs.mapNotNull { ref -> songs[ref.songId]?.let { ref.playlistId to it } }
+        .groupBy({ it.first }, { it.second })
+    return playlists.map {
+        val playlistSongs = present[it.id].orEmpty()
+        PlaylistSummary(it, playlistSongs.size, playlistSongs.take(MAX_COVER_SONGS))
+    }
 }

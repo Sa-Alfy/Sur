@@ -18,7 +18,9 @@
     <string name="clear_selection">Clear selection</string>
 
     <!-- Playlists -->
-    <string name="no_playlists">No playlists yet.\nTap + to create one.</string>
+    <string name="no_playlists">No playlists yet</string>
+    <string name="no_playlists_body">Gather the songs you love into a playlist.</string>
+    <string name="create_playlist">Create playlist</string>
     <string name="playlist_empty">This playlist is empty.\nAdd songs from the Songs tab.</string>
     <string name="new_playlist">New playlist</string>
     <string name="playlist_name">Name</string>
@@ -56,6 +58,7 @@
     <string name="battery_message">Some phones (Oppo, Xiaomi, Vivo, Huawei and others) stop apps in the background to save battery, which can cut off your music. If that happens, allow Sur to run without battery restrictions.</string>
     <string name="dont_show_again">Don’t show again</string>
 
+    <string name="now_playing_indicator">Now playing</string>
     <plurals name="song_count">
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
