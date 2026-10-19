@@ -63,13 +63,6 @@ import io.github.saalfy.sur.download.DownloadState
 import io.github.saalfy.sur.ui.hasPermission
 import kotlinx.coroutines.launch
 
-/** Audio format options shown in the stitch design. For now Sur always extracts best-quality audio. */
-private enum class AudioFormat(val label: String, val sublabel: String, val badge: String) {
-    M4A("Audio (M4A / AAC)", "Best fidelity • Native Direct Stream", "Lossless"),
-    OPUS("Opus (Ogg Container)", "Low Storage Footprint • 160 kbps", "Compact"),
-    MP3("MP3 (Remux VBR/CBR)", "320 kbps Remux • Universal Legacy", "Universal"),
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadScreen(
@@ -82,7 +75,6 @@ fun DownloadScreen(
     val scope = rememberCoroutineScope()
 
     var urlInput by rememberSaveable { mutableStateOf(initialUrl.orEmpty()) }
-    var selectedFormat by rememberSaveable { mutableStateOf(AudioFormat.M4A) }
 
     val writePermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -140,42 +132,28 @@ fun DownloadScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.size(28.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painterResource(R.drawable.ic_download),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.offline_extractor),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
                     Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(28.dp),
                     ) {
-                        Text(
-                            text = "NewPipe Core",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painterResource(R.drawable.ic_download),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.download_audio),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 Text(
                     text = stringResource(R.string.download_description_extended),
@@ -221,24 +199,6 @@ fun DownloadScreen(
                         },
                         shape = RoundedCornerShape(12.dp),
                     )
-
-                    // Target format label
-                    Text(
-                        text = stringResource(R.string.target_audio_format),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    // Format chips
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        AudioFormat.entries.forEach { format ->
-                            FormatChip(
-                                format = format,
-                                selected = selectedFormat == format,
-                                onClick = { selectedFormat = format },
-                            )
-                        }
-                    }
 
                     // Action buttons
                     Row(
@@ -510,71 +470,3 @@ fun DownloadScreen(
     }
 }
 
-@Composable
-private fun FormatChip(
-    format: AudioFormat,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val containerColor = if (selected) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
-    }
-    val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Surface(
-        onClick = onClick,
-        color = containerColor,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(
-                    painterResource(
-                        if (selected) R.drawable.ic_check else R.drawable.ic_music_note,
-                    ),
-                    contentDescription = null,
-                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(18.dp),
-                )
-                Column {
-                    Text(
-                        text = format.label,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = contentColor,
-                    )
-                    Text(
-                        text = format.sublabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = contentColor.copy(alpha = 0.75f),
-                    )
-                }
-            }
-            Surface(
-                color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(4.dp),
-            ) {
-                Text(
-                    text = format.badge,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-        }
-    }
-}

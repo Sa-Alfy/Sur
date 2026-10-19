@@ -28,13 +28,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,9 +52,6 @@ import io.github.saalfy.sur.ui.common.CenteredMessage
 import io.github.saalfy.sur.ui.common.SearchableTopBar
 import io.github.saalfy.sur.ui.common.formatDuration
 
-private const val TAB_ALL_SONGS = 0
-private const val TAB_QUEUE = 1
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongsScreen(
@@ -71,7 +65,6 @@ fun SongsScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     var searching by rememberSaveable { mutableStateOf(false) }
-    var selectedTab by rememberSaveable { mutableIntStateOf(TAB_ALL_SONGS) }
 
     var selected by remember { mutableStateOf(emptySet<Long>()) }
     // Song ids waiting for a playlist choice; non-null shows the picker.
@@ -108,11 +101,6 @@ fun SongsScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
-                            Text(
-                                text = stringResource(R.string.batch_queue_edit),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
-                            )
                         }
                         IconButton(onClick = {
                             pendingAdd = songs.orEmpty().map(Song::id).filter { it in selected }
@@ -143,31 +131,13 @@ fun SongsScreen(
                     }
                 }
             } else {
-                Column {
-                    SearchableTopBar(
-                        title = stringResource(R.string.tab_songs),
-                        query = query,
-                        onQueryChange = viewModel::onQueryChange,
-                        searching = searching,
-                        onSearchingChange = { searching = it },
-                    )
-                    // Segmented tab bar: All Songs / Current Queue
-                    TabRow(selectedTabIndex = selectedTab) {
-                        Tab(
-                            selected = selectedTab == TAB_ALL_SONGS,
-                            onClick = { selectedTab = TAB_ALL_SONGS },
-                            text = {
-                                val count = songs?.size ?: 0
-                                Text(stringResource(R.string.tab_all_songs_count, count))
-                            },
-                        )
-                        Tab(
-                            selected = selectedTab == TAB_QUEUE,
-                            onClick = { selectedTab = TAB_QUEUE },
-                            text = { Text(stringResource(R.string.tab_queue)) },
-                        )
-                    }
-                }
+                SearchableTopBar(
+                    title = stringResource(R.string.tab_songs),
+                    query = query,
+                    onQueryChange = viewModel::onQueryChange,
+                    searching = searching,
+                    onSearchingChange = { searching = it },
+                )
             }
         },
     ) { innerPadding ->
