@@ -1,5 +1,8 @@
 package io.github.saalfy.sur.ui.playlists
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -8,8 +11,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.PlaylistSummary
+import io.github.saalfy.sur.data.playlist.m3u.M3uMatcher
+import io.github.saalfy.sur.data.playlist.m3u.M3uParser
+import io.github.saalfy.sur.data.playlist.m3u.MediaStoreSongFiles
 import io.github.saalfy.sur.data.search.SEARCH_DEBOUNCE_MS
 import io.github.saalfy.sur.data.search.filterPlaylists
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,10 +25,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel() {
+sealed interface ImportResult {
+    data class Success(val name: String, val added: Int, val notFound: Int) : ImportResult
+    data object NothingMatched : ImportResult
+    data object FileTooLarge : ImportResult
+}
+
+class PlaylistsViewModel(
+    private val repository: PlaylistRepository,
+    private val contentResolver: ContentResolver,
+) : ViewModel() {
 
     /** null while loading. */
     val playlists: StateFlow<List<PlaylistSummary>?> =
@@ -28,6 +47,9 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
+
+    private val _importResult = MutableStateFlow<ImportResult?>(null)
+    val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
 
     /** [playlists] filtered by name with the debounced query; null while loading. */
     @OptIn(FlowPreview::class)
@@ -46,10 +68,105 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
 
     fun delete(id: Long) = viewModelScope.launch { repository.delete(id) }
 
+    fun importFromUri(uri: Uri) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val maxBytes = 2 * 1024 * 1024
+                var exceeded = false
+                val bytes = try {
+                    contentResolver.openInputStream(uri)?.use { stream ->
+                        val buffer = ByteArrayOutputStream()
+                        val chunk = ByteArray(8192)
+                        var totalRead = 0
+                        var read: Int
+                        while (stream.read(chunk).also { read = it } != -1) {
+                            totalRead += read
+                            if (totalRead > maxBytes) {
+                                exceeded = true
+                                return@use null
+                            }
+                            buffer.write(chunk, 0, read)
+                        }
+                        buffer.toByteArray()
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+
+                if (exceeded) {
+                    _importResult.value = ImportResult.FileTooLarge
+                    return@withContext
+                }
+                if (bytes == null) {
+                    _importResult.value = ImportResult.NothingMatched
+                    return@withContext
+                }
+
+                val text = bytes.toString(Charsets.UTF_8)
+                val displayName = try {
+                    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            if (idx >= 0) cursor.getString(idx) else null
+                        } else null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+
+                val fallbackName = displayName?.substringBeforeLast('.')?.trim()?.ifEmpty { null }
+                    ?: uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.')?.trim()?.ifEmpty { null }
+                    ?: "Imported Playlist"
+
+                val parsed = M3uParser.parse(text, fallbackName)
+                if (parsed.entries.isEmpty()) {
+                    _importResult.value = ImportResult.NothingMatched
+                    return@withContext
+                }
+
+                val library = MediaStoreSongFiles.queryAll(contentResolver)
+                val matchResult = M3uMatcher.match(parsed.entries, library)
+                val matchedSongIds = matchResult.matched.filterNotNull().distinct()
+
+                if (matchedSongIds.isEmpty()) {
+                    _importResult.value = ImportResult.NothingMatched
+                    return@withContext
+                }
+
+                val existingPlaylists = repository.playlists.first()
+                val existingNames = existingPlaylists.map { it.playlist.name }.toSet()
+
+                var targetName = parsed.playlistName.trim().ifEmpty { fallbackName }
+                if (targetName in existingNames) {
+                    var counter = 2
+                    while ("$targetName ($counter)" in existingNames) {
+                        counter++
+                    }
+                    targetName = "$targetName ($counter)"
+                }
+
+                val newId = repository.create(targetName)
+                repository.addSongs(newId, matchedSongIds)
+
+                val added = matchedSongIds.size
+                val notFound = parsed.entries.size - added
+                _importResult.value = ImportResult.Success(targetName, added, notFound)
+            }
+        }
+    }
+
+    fun clearImportResult() {
+        _importResult.value = null
+    }
+
     companion object {
         val Factory = viewModelFactory {
             initializer {
-                PlaylistsViewModel((this[APPLICATION_KEY] as SurApplication).container.playlistRepository)
+                val app = this[APPLICATION_KEY] as SurApplication
+                PlaylistsViewModel(
+                    app.container.playlistRepository,
+                    app.contentResolver,
+                )
             }
         }
     }

@@ -1,5 +1,7 @@
 package io.github.saalfy.sur.ui.playlists
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -27,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,12 +83,49 @@ fun PlaylistsScreen(
 ) {
     val playlists by viewModel.visiblePlaylists.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val importResult by viewModel.importResult.collectAsStateWithLifecycle()
     val loader = rememberArtworkLoader()
     val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
     var searching by rememberSaveable { mutableStateOf(false) }
     var dialog by remember { mutableStateOf<PlaylistsDialog?>(null) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
+
+    val m3uMimeTypes = remember {
+        arrayOf(
+            "audio/x-mpegurl",
+            "audio/mpegurl",
+            "application/vnd.apple.mpegurl",
+            "text/plain",
+            "*/*",
+        )
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) viewModel.importFromUri(uri) }
+
+    val currentImportResult = importResult
+    if (currentImportResult != null) {
+        val message = when (currentImportResult) {
+            is ImportResult.Success -> stringResource(
+                R.string.import_m3u_success,
+                currentImportResult.name,
+                currentImportResult.added,
+                currentImportResult.notFound,
+            )
+            ImportResult.NothingMatched -> stringResource(R.string.import_m3u_nothing_matched)
+            ImportResult.FileTooLarge -> stringResource(R.string.import_m3u_file_too_large)
+        }
+        AlertDialog(
+            onDismissRequest = viewModel::clearImportResult,
+            confirmButton = {
+                TextButton(onClick = viewModel::clearImportResult) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            text = { Text(message) },
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -109,14 +150,17 @@ fun PlaylistsScreen(
             when {
                 list == null -> Unit
                 list.isEmpty() && query.isNotBlank() -> CenteredMessage(stringResource(R.string.no_results, query.trim()))
-                list.isEmpty() -> EmptyPlaylists(onCreate = { dialog = PlaylistsDialog.Create })
+                list.isEmpty() -> EmptyPlaylists(
+                    onCreate = { dialog = PlaylistsDialog.Create },
+                    onImport = { importLauncher.launch(m3uMimeTypes) },
+                )
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.Start,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             FilledTonalButton(
                                 onClick = { dialog = PlaylistsDialog.Create },
@@ -128,6 +172,17 @@ fun PlaylistsScreen(
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(stringResource(R.string.new_playlist))
+                            }
+                            FilledTonalButton(
+                                onClick = { importLauncher.launch(m3uMimeTypes) },
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_download),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(stringResource(R.string.import_playlist))
                             }
                         }
                     }
@@ -174,7 +229,7 @@ fun PlaylistsScreen(
 }
 
 @Composable
-private fun EmptyPlaylists(onCreate: () -> Unit) {
+private fun EmptyPlaylists(onCreate: () -> Unit, onImport: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
@@ -201,10 +256,20 @@ private fun EmptyPlaylists(onCreate: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = onCreate, modifier = Modifier.padding(top = 4.dp)) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.create_playlist))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            Button(onClick = onCreate) {
+                Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.create_playlist))
+            }
+            FilledTonalButton(onClick = onImport) {
+                Icon(painterResource(R.drawable.ic_download), contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.import_playlist))
+            }
         }
     }
 }

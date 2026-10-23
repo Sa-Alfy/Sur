@@ -1,5 +1,7 @@
 package io.github.saalfy.sur.ui.playlist
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -17,6 +22,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +59,7 @@ fun PlaylistDetailScreen(
     ),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val exportResult by viewModel.exportResult.collectAsStateWithLifecycle()
     val state = uiState
 
     if (state is PlaylistDetailUiState.Missing) {
@@ -60,18 +67,59 @@ fun PlaylistDetailScreen(
         return
     }
 
+    val playlistName = (state as? PlaylistDetailUiState.Loaded)?.playlist?.name ?: ""
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("audio/x-mpegurl"),
+    ) { uri -> if (uri != null) viewModel.exportToUri(uri) }
+
+    // Export result dialog
+    val result = exportResult
+    if (result != null) {
+        val baseMsg = stringResource(R.string.export_m3u_done, result.songCount)
+        val weakMsg = if (result.weakCount > 0) {
+            "\n" + stringResource(R.string.export_m3u_weak, result.weakCount)
+        } else ""
+        AlertDialog(
+            onDismissRequest = viewModel::clearExportResult,
+            confirmButton = {
+                TextButton(onClick = viewModel::clearExportResult) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            text = { Text(baseMsg + weakMsg) },
+        )
+    }
+
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
-                title = {
-                    val name = (state as? PlaylistDetailUiState.Loaded)?.playlist?.name.orEmpty()
-                    Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
+                title = { Text(playlistName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    var menuOpen by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(
+                                painterResource(R.drawable.ic_more_vert),
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.export_m3u)) },
+                                onClick = {
+                                    menuOpen = false
+                                    exportLauncher.launch("$playlistName.m3u")
+                                },
+                            )
+                        }
                     }
                 },
             )
@@ -164,3 +212,4 @@ private fun ReorderableSongList(
         }
     }
 }
+
