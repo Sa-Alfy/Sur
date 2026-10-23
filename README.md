@@ -26,6 +26,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Search**: songs by title, artist or album; playlists by name.
 - **Material 3**: dynamic color on Android 12+, an accessible teal fallback palette on Android 8–11 with verified WCAG contrast, and it follows system light/dark.
 - **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, song metadata, foreground notification controls, and audio tagging.
+- **Playlists backup**: export playlists as M3U files and import them back — no extra permissions needed.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
 - **Private**: no accounts, cloud, ads or analytics. Connects to the network only when downloading audio you request.
 
