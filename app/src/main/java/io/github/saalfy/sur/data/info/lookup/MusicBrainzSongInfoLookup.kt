@@ -2,6 +2,7 @@ package io.github.saalfy.sur.data.info.lookup
 
 import com.grack.nanojson.JsonObject
 import com.grack.nanojson.JsonParser
+import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
@@ -46,6 +47,8 @@ class MusicBrainzSongInfoLookup(
 
             val response = try {
                 rateLimiter.execute { client.newCall(request) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: LookupBusyException) {
                 throw e
             } catch (e: Exception) {
@@ -69,7 +72,16 @@ class MusicBrainzSongInfoLookup(
                 continue
             }
 
-            val bytes = body.bytes()
+            val bytes = try {
+                body.bytes()
+            } catch (e: CancellationException) {
+                response.close()
+                throw e
+            } catch (e: Exception) {
+                response.close()
+                continue
+            }
+
             if (bytes.size > MAX_COVER_BYTES) {
                 continue
             }

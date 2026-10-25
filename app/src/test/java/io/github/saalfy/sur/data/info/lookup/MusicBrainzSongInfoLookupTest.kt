@@ -1,5 +1,7 @@
 package io.github.saalfy.sur.data.info.lookup
 
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -287,5 +289,45 @@ class MusicBrainzSongInfoLookupTest {
 
         val coverBytes = lookup.fetchCover(candidate)
         assertNull(coverBytes)
+    }
+
+    @Test
+    fun fetchCover_cancellation_endsCancelledAndDoesNotTryNextRelease() = runBlocking {
+        val requestedUrls = mutableListOf<String>()
+        var job: Job? = null
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                requestedUrls.add(url)
+                job?.cancel()
+                throw java.io.IOException("Canceled")
+            }
+            .build()
+
+        val lookup = MusicBrainzSongInfoLookup(
+            versionName = "0.3.2",
+            client = client,
+            rateLimiter = RateLimiter(clock = FakeClock(), sleeper = {}),
+        )
+
+        val candidate = Candidate(
+            recordingId = "rec-1",
+            title = "Test",
+            artist = "Artist",
+            releaseTitle = "Album",
+            year = "2020",
+            durationMs = 120000L,
+            score = 100,
+            releaseIds = listOf("release-1", "release-2", "release-3"),
+        )
+
+        job = launch {
+            lookup.fetchCover(candidate)
+        }
+        job.join()
+
+        assertTrue(job.isCancelled)
+        assertEquals(listOf("https://coverartarchive.org/release/release-1/front-500"), requestedUrls)
     }
 }
