@@ -95,6 +95,31 @@ class QueryCleanerAndRankerTest {
         assertTrue(queries2.isEmpty())
     }
 
+    // --- Step 1: hyphens inside words ---
+
+    @Test
+    fun clean_hyphenInsideWords_jayZEmpireStateOfMind() {
+        val queries = QueryCleaner.clean(displayName = "Jay-Z - Empire State of Mind")
+        assertEquals(3, queries.size)
+        assertEquals(LookupQuery(title = "Empire State of Mind", artist = "Jay-Z"), queries[0])
+        assertEquals(LookupQuery(title = "Jay-Z", artist = "Empire State of Mind"), queries[1])
+        assertEquals(LookupQuery(title = "Jay-Z - Empire State of Mind", artist = null), queries[2])
+    }
+
+    @Test
+    fun clean_hyphenInsideWords_spiderMan() {
+        val queries = QueryCleaner.clean(displayName = "Spider-Man")
+        assertEquals(1, queries.size)
+        assertEquals(LookupQuery(title = "Spider-Man", artist = null), queries[0])
+    }
+
+    @Test
+    fun clean_hyphenInsideWords_antiHero() {
+        val queries = QueryCleaner.clean(displayName = "Anti-Hero")
+        assertEquals(1, queries.size)
+        assertEquals(LookupQuery(title = "Anti-Hero", artist = null), queries[0])
+    }
+
     // --- C.4 Duration note boundaries and ranking ---
 
     @Test

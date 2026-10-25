@@ -18,6 +18,10 @@ object QueryCleaner {
 
     private val FEAT_HINT_REGEX = Regex("(?i)\\b(feat\\.?|ft\\.?)\\b")
 
+    private val SEPARATOR_HYPHEN_REGEX = Regex(
+        "(?:^|[\\s_]+)-+[\\s_]*|[\\s_]*-+(?:[\\s_]+|$)"
+    )
+
     /**
      * Cleans metadata and produces up to 3 ordered query variants.
      * Returns emptyList() if the cleaned text contains no letters or digits.
@@ -79,10 +83,11 @@ object QueryCleaner {
 
     fun cleanText(raw: String): String {
         var s = raw.replace(FILE_EXT_REGEX, "")
+        s = s.replace(SEPARATOR_HYPHEN_REGEX, " - ")
         s = s.replace('_', ' ')
-        s = s.replace(Regex("-+"), "-")
-        s = s.replace(Regex("\\s*-\\s*"), " - ")
+        s = s.replace(Regex("-{2,}"), "-")
         s = s.replace(Regex("\\s+"), " ").trim()
+        s = s.removePrefix("-").removeSuffix("-").trim()
 
         // Remove bracket noise
         s = s.replace(BRACKET_NOISE_REGEX, " ").trim()
@@ -94,10 +99,10 @@ object QueryCleaner {
             s = cleanParts.firstOrNull() ?: pipeParts.firstOrNull().orEmpty()
         }
 
-        // Remove trailing noise segments after a hyphen, e.g. "Aaj Se Teri - Lyrical"
-        while (s.contains('-')) {
-            val lastHyphenIdx = s.lastIndexOf('-')
-            val trailingPart = s.substring(lastHyphenIdx + 1).trim()
+        // Remove trailing noise segments after a separator " - "
+        while (s.contains(" - ")) {
+            val lastHyphenIdx = s.lastIndexOf(" - ")
+            val trailingPart = s.substring(lastHyphenIdx + 3).trim()
             if (trailingPart.isNotEmpty() && NOISE_REGEX.containsMatchIn(trailingPart)) {
                 s = s.substring(0, lastHyphenIdx).trim()
             } else {
@@ -105,8 +110,8 @@ object QueryCleaner {
             }
         }
 
-        s = s.replace(Regex("-+"), "-")
         s = s.replace(Regex("\\s+"), " ").trim()
+        s = s.removePrefix("-").removeSuffix("-").trim()
         return s
     }
 
@@ -127,8 +132,8 @@ object QueryCleaner {
         }
 
         // 2. Check for "Artist - Title" or "Title - Artist"
-        if (text.contains('-')) {
-            val parts = text.split('-').map { it.trim() }.filter { it.isNotEmpty() }
+        if (text.contains(" - ")) {
+            val parts = text.split(" - ").map { it.trim() }.filter { it.isNotEmpty() }
             if (parts.size >= 2) {
                 val part1 = parts[0]
                 val part2 = parts.subList(1, parts.size).joinToString(" - ")
