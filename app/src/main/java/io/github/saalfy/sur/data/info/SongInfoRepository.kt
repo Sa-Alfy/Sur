@@ -47,6 +47,9 @@ class RoomSongInfoRepository(
 
     override suspend fun skip(key: String) {
         val existing = dao.get(key)
+        if (existing?.status == SongInfoStatus.APPLIED) {
+            return
+        }
         val entity = existing?.copy(
             status = SongInfoStatus.SKIPPED,
             updatedAt = System.currentTimeMillis(),
