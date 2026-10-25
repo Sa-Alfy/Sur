@@ -32,6 +32,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 
 ## Roadmap
 
+- **Find info**: look up track metadata (title, artist, album) and cover art via MusicBrainz and Cover Art Archive for songs with missing info (user-confirmed only, stored locally).
 - **Bitrate & format preferences**: options for audio quality and format in the downloader.
 - **Batch / playlist queueing**: queue multiple downloads sequentially.
 
