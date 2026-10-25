@@ -13,10 +13,12 @@ palette = "1.0.0"
 junit = "4.13.2"
 newpipeExtractor = "v0.26.5"
 okhttp = "5.5.0"
+nanojson = "1.9"
 desugarJdkLibs = "2.1.5"
 coroutines = "1.11.0"
 
 [libraries]
+nanojson = { group = "com.github.TeamNewPipe", name = "nanojson", version = "e9d656ddb49a412a5a0a5d5ef20ca7ef09549996" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
