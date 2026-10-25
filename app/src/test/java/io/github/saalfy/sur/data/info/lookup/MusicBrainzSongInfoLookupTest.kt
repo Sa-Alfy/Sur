@@ -330,4 +330,114 @@ class MusicBrainzSongInfoLookupTest {
         assertTrue(job.isCancelled)
         assertEquals(listOf("https://coverartarchive.org/release/release-1/front-500"), requestedUrls)
     }
+
+    // --- Step 4: search failure tests ---
+
+    @Test
+    fun search_http403_throwsLookupHttpException403() = runBlocking {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(403)
+                    .message("Forbidden")
+                    .body("Forbidden".toResponseBody("text/plain".toMediaType()))
+                    .build()
+            }
+            .build()
+
+        val lookup = MusicBrainzSongInfoLookup(
+            versionName = "0.3.2",
+            client = client,
+            rateLimiter = RateLimiter(clock = FakeClock(), sleeper = {}),
+        )
+
+        try {
+            lookup.search(LookupQuery(title = "Song"))
+            fail("Expected LookupHttpException")
+        } catch (e: LookupHttpException) {
+            assertEquals(403, e.code)
+        }
+    }
+
+    @Test
+    fun search_http400_throwsLookupHttpException400() = runBlocking {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(400)
+                    .message("Bad Request")
+                    .body("Bad Request".toResponseBody("text/plain".toMediaType()))
+                    .build()
+            }
+            .build()
+
+        val lookup = MusicBrainzSongInfoLookup(
+            versionName = "0.3.2",
+            client = client,
+            rateLimiter = RateLimiter(clock = FakeClock(), sleeper = {}),
+        )
+
+        try {
+            lookup.search(LookupQuery(title = "Song"))
+            fail("Expected LookupHttpException")
+        } catch (e: LookupHttpException) {
+            assertEquals(400, e.code)
+        }
+    }
+
+    @Test
+    fun search_badJsonOn200_throwsLookupParseException() = runBlocking {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("{ invalid json : bad }".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            .build()
+
+        val lookup = MusicBrainzSongInfoLookup(
+            versionName = "0.3.2",
+            client = client,
+            rateLimiter = RateLimiter(clock = FakeClock(), sleeper = {}),
+        )
+
+        try {
+            lookup.search(LookupQuery(title = "Song"))
+            fail("Expected LookupParseException")
+        } catch (e: LookupParseException) {
+            // Success
+        }
+    }
+
+    @Test
+    fun search_emptyRecordingsOn200_returnsEmptyList() = runBlocking {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("""{"recordings":[]}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            .build()
+
+        val lookup = MusicBrainzSongInfoLookup(
+            versionName = "0.3.2",
+            client = client,
+            rateLimiter = RateLimiter(clock = FakeClock(), sleeper = {}),
+        )
+
+        val results = lookup.search(LookupQuery(title = "Song"))
+        assertTrue(results.isEmpty())
+    }
 }

@@ -29,9 +29,11 @@ class MusicBrainzSongInfoLookup(
             .build()
 
         val response = rateLimiter.execute { client.newCall(request) }
-        val bodyString = response.body.string()
-        if (!response.isSuccessful) {
-            return emptyList()
+        val bodyString = response.use { resp ->
+            if (!resp.isSuccessful) {
+                throw LookupHttpException(resp.code)
+            }
+            resp.body.string()
         }
         return parseCandidates(bodyString)
     }
@@ -130,9 +132,10 @@ class MusicBrainzSongInfoLookup(
             val root = try {
                 JsonParser.`object`().from(jsonString)
             } catch (e: Exception) {
-                return emptyList()
+                throw LookupParseException("Malformed JSON response", e)
             }
-            val recordingsArray = root.getArray("recordings") ?: return emptyList()
+            val recordingsArray = root.getArray("recordings")
+                ?: throw LookupParseException("Missing recordings field in response")
             val result = mutableListOf<Candidate>()
 
             for (i in 0 until recordingsArray.size) {

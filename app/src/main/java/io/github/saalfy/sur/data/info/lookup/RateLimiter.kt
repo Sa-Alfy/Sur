@@ -13,6 +13,10 @@ import kotlin.coroutines.resumeWithException
 
 class LookupBusyException(message: String = "Service unavailable: MusicBrainz rate limit busy (503)") : IOException(message)
 
+class LookupHttpException(val code: Int, message: String = "HTTP error $code from lookup service") : IOException(message)
+
+class LookupParseException(message: String = "Failed to parse lookup response", cause: Throwable? = null) : IOException(message, cause)
+
 fun interface Clock {
     fun currentTimeMillis(): Long
 
@@ -72,7 +76,9 @@ suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation 
     }
     enqueue(object : Callback {
         override fun onResponse(call: Call, response: Response) {
-            continuation.resume(response)
+            continuation.resume(response) { _, res, _ ->
+                res.close()
+            }
         }
 
         override fun onFailure(call: Call, e: IOException) {
