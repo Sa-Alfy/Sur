@@ -12,15 +12,18 @@ object QueryCleaner {
         "(?i)\\.(mp3|m4a|opus|flac|wav|aac|ogg|wma|webm|m4p)$"
     )
 
-    private val BRACKET_NOISE_REGEX = Regex(
-        "(?i)\\s*[\\[\\(\\{][^\\]\\)\\}]*(?:official|video|audio|lyric|lyrical|lyrics|full|hd|4k|movie\\s+song)[^\\]\\)\\}]*[\\]\\)\\}]\\s*"
-    )
+    private val BRACKET_REGEX = Regex("[\\[\\(\\{]([^\\]\\)\\}]*)[\\]\\)\\}]")
 
     private val FEAT_HINT_REGEX = Regex("(?i)\\b(feat\\.?|ft\\.?)\\b")
 
     private val SEPARATOR_HYPHEN_REGEX = Regex(
         "(?:^|[\\s_]+)-+[\\s_]*|[\\s_]*-+(?:[\\s_]+|$)"
     )
+
+    private fun isNoiseSegment(segment: String): Boolean {
+        val withoutNoise = segment.replace(NOISE_REGEX, "")
+        return !withoutNoise.any { it.isLetterOrDigit() }
+    }
 
     /**
      * Cleans metadata and produces up to 3 ordered query variants.
@@ -89,13 +92,16 @@ object QueryCleaner {
         s = s.replace(Regex("\\s+"), " ").trim()
         s = s.removePrefix("-").removeSuffix("-").trim()
 
-        // Remove bracket noise
-        s = s.replace(BRACKET_NOISE_REGEX, " ").trim()
+        // Remove bracket noise only if the whole segment inside is noise
+        s = BRACKET_REGEX.replace(s) { matchResult ->
+            val inner = matchResult.groupValues[1]
+            if (isNoiseSegment(inner)) " " else matchResult.value
+        }.trim()
 
         // Remove pipe noise segments
         if (s.contains('|')) {
             val pipeParts = s.split('|').map { it.trim() }.filter { it.isNotEmpty() }
-            val cleanParts = pipeParts.filterNot { NOISE_REGEX.containsMatchIn(it) }
+            val cleanParts = pipeParts.filterNot { isNoiseSegment(it) }
             s = cleanParts.firstOrNull() ?: pipeParts.firstOrNull().orEmpty()
         }
 
@@ -103,7 +109,7 @@ object QueryCleaner {
         while (s.contains(" - ")) {
             val lastHyphenIdx = s.lastIndexOf(" - ")
             val trailingPart = s.substring(lastHyphenIdx + 3).trim()
-            if (trailingPart.isNotEmpty() && NOISE_REGEX.containsMatchIn(trailingPart)) {
+            if (trailingPart.isNotEmpty() && isNoiseSegment(trailingPart)) {
                 s = s.substring(0, lastHyphenIdx).trim()
             } else {
                 break

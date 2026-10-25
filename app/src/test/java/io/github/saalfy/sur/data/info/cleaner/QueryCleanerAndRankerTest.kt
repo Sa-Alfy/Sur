@@ -120,6 +120,35 @@ class QueryCleanerAndRankerTest {
         assertEquals(LookupQuery(title = "Anti-Hero", artist = null), queries[0])
     }
 
+    // --- Step 2: noise only when whole segment is noise ---
+
+    @Test
+    fun clean_wholeSegmentNoise_bugglesVideoKilledTheRadioStar() {
+        val queries = QueryCleaner.clean(displayName = "Buggles - Video Killed the Radio Star")
+        assertEquals(3, queries.size)
+        assertEquals(LookupQuery(title = "Video Killed the Radio Star", artist = "Buggles"), queries[0])
+        assertEquals(LookupQuery(title = "Buggles", artist = "Video Killed the Radio Star"), queries[1])
+        assertEquals(LookupQuery(title = "Buggles - Video Killed the Radio Star", artist = null), queries[2])
+    }
+
+    @Test
+    fun clean_wholeSegmentNoise_fullCircleAerosmith() {
+        val queries = QueryCleaner.clean(displayName = "Full Circle | Aerosmith")
+        assertEquals("Full Circle", queries[0].title)
+    }
+
+    @Test
+    fun clean_wholeSegmentNoise_artistTitleOfficialVideoInParens() {
+        val queries = QueryCleaner.clean(displayName = "Artist - Title (Official Video)")
+        assertEquals(LookupQuery(title = "Title", artist = "Artist"), queries[0])
+    }
+
+    @Test
+    fun clean_wholeSegmentNoise_artistTitleOfficialVideoWithHyphen() {
+        val queries = QueryCleaner.clean(displayName = "Artist - Title - Official Video")
+        assertEquals(LookupQuery(title = "Title", artist = "Artist"), queries[0])
+    }
+
     // --- C.4 Duration note boundaries and ranking ---
 
     @Test
