@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.LruCache
 import android.util.Size
+import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -50,7 +51,10 @@ val ThumbnailSize = 48.dp
 private val decodeDispatcher = Dispatchers.IO.limitedParallelism(2)
 
 /** Loads downsampled album art from MediaStore with a small in-memory cache. */
-class ArtworkLoader(private val context: Context) {
+class ArtworkLoader(
+    private val context: Context,
+    private val coverProvider: ((Long) -> File?)? = null,
+) {
     private val resolver: ContentResolver = context.applicationContext.contentResolver
 
     private val cache = object : LruCache<String, Bitmap>(ARTWORK_CACHE_BYTES) {
@@ -61,6 +65,23 @@ class ArtworkLoader(private val context: Context) {
     private val missing = LruCache<String, Boolean>(512)
 
     fun cached(songId: Long, sizePx: Int): Bitmap? = cache.get(key(songId, sizePx))
+
+    /** Removes every cache entry for [songId] across all sizes and clears its missing art entry. */
+    fun evict(songId: Long) {
+        val prefix = "$songId@"
+        val cacheSnapshot = cache.snapshot()
+        for (key in cacheSnapshot.keys) {
+            if (key.startsWith(prefix)) {
+                cache.remove(key)
+            }
+        }
+        val missingSnapshot = missing.snapshot()
+        for (key in missingSnapshot.keys) {
+            if (key.startsWith(prefix)) {
+                missing.remove(key)
+            }
+        }
+    }
 
     suspend fun load(songId: Long, artworkUri: Uri?, sizePx: Int): Bitmap? {
         val key = key(songId, sizePx)
@@ -73,14 +94,34 @@ class ArtworkLoader(private val context: Context) {
 
     private fun key(songId: Long, sizePx: Int) = "$songId@$sizePx"
 
-    private fun decode(songId: Long, artworkUri: Uri?, sizePx: Int): Bitmap? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    private fun decode(songId: Long, artworkUri: Uri?, sizePx: Int): Bitmap? {
+        val coverFile = coverProvider?.invoke(songId)
+        if (coverFile != null) {
+            val bitmap = decodeFileSampled(coverFile, sizePx)
+            if (bitmap != null) return bitmap
+        }
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             runCatching {
                 resolver.loadThumbnail(MediaStoreUris.song(songId), Size(sizePx, sizePx), null)
             }.getOrNull() ?: decodeEmbedded(songId, sizePx)
         } else {
             (artworkUri?.let { decodeSampled(it, sizePx) }) ?: decodeEmbedded(songId, sizePx)
         }
+    }
+
+    private fun decodeFileSampled(file: File, sizePx: Int): Bitmap? {
+        if (!file.exists() || !file.isFile) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= sizePx && bounds.outHeight / (sample * 2) >= sizePx) sample *= 2
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        return BitmapFactory.decodeFile(file.absolutePath, options)
+    }
 
     private fun decodeEmbedded(songId: Long, sizePx: Int): Bitmap? {
         val retriever = MediaMetadataRetriever()

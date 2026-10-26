@@ -71,12 +71,18 @@ class AppContainer(context: Context) {
                 override suspend fun reset(key: String) = repo.reset(key)
             },
             covers = coverStore,
-        )
+        ).apply {
+            onCoversChanged = { ids ->
+                ids.forEach { artworkLoader.evict(it) }
+            }
+        }
     }
 
     val songRepository: SongRepository get() = overlaySongRepository
 
-    val artworkLoader: ArtworkLoader by lazy { ArtworkLoader(context) }
+    val artworkLoader: ArtworkLoader by lazy {
+        ArtworkLoader(context) { songId -> overlaySongRepository.coverFor(songId) }
+    }
 
     val preferences: AppPreferences by lazy { AppPreferences(context) }
 

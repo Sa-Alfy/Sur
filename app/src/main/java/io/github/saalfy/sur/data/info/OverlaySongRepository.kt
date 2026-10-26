@@ -16,12 +16,13 @@ import java.util.concurrent.atomic.AtomicReference
  * APPLIED rows: replace title/artist/album only when the override value is non-null and non-blank;
  * SKIPPED rows and no row: return the song unchanged.
  */
-fun applyOverride(song: Song, info: SongInfoEntity?): Song {
+fun applyOverride(song: Song, info: SongInfoEntity?, coverFile: File? = null): Song {
     if (info == null || info.status != SongInfoStatus.APPLIED) return song
     return song.copy(
         title = info.title?.takeIf { it.isNotBlank() } ?: song.title,
         artist = info.artist?.takeIf { it.isNotBlank() } ?: song.artist,
         album = info.album?.takeIf { it.isNotBlank() } ?: song.album,
+        coverFile = coverFile ?: song.coverFile,
     )
 }
 
@@ -97,12 +98,14 @@ class OverlaySongRepository(
                 val overridden = delegateSongs.map { song ->
                     val key = keyMap[song.id]
                     val entity = key?.let { infoByKey[it] }
-                    if (entity?.status == SongInfoStatus.APPLIED && !entity.coverFile.isNullOrBlank()) {
+                    val coverFile = if (entity?.status == SongInfoStatus.APPLIED && !entity.coverFile.isNullOrBlank()) {
                         newCovers[song.id] = entity.coverFile
+                        covers.file(entity.coverFile)
                     } else {
                         newCovers[song.id] = null
+                        null
                     }
-                    applyOverride(song, entity)
+                    applyOverride(song, entity, coverFile)
                 }
                 updateCoverSnapshot(newCovers)
                 overridden
