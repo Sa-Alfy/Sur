@@ -1,5 +1,8 @@
 package io.github.saalfy.sur.downloader.newpipe
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Log
 import io.github.saalfy.sur.downloader.AudioDownloader
 import io.github.saalfy.sur.downloader.DownloadError
 import io.github.saalfy.sur.downloader.DownloadException
@@ -13,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.schabi.newpipe.extractor.Image
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
@@ -27,6 +32,7 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.AudioTrackType
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamType
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -69,6 +75,15 @@ class NewPipeAudioDownloader(
             val stream = pickAudioStream(extractor.audioStreams)
                 ?: throw DownloadException(DownloadError.NotDownloadable)
 
+            // Pick largest thumbnail: known sizes sorted by height desc, UNKNOWN sort last.
+            val thumbnailUrl = runCatching { extractor.thumbnails }
+                .getOrNull()
+                ?.maxWithOrNull(compareBy(
+                    { it.estimatedResolutionLevel != Image.ResolutionLevel.UNKNOWN },
+                    { if (it.height != Image.HEIGHT_UNKNOWN) it.height else 0 },
+                ))
+                ?.url
+
             VideoInfo(
                 videoId = videoId,
                 title = extractor.name.trim().ifEmpty { videoId },
@@ -78,6 +93,7 @@ class NewPipeAudioDownloader(
                 itag = stream.itag,
                 bitrateKbps = stream.averageBitrate,
                 contentLength = stream.itagItem?.contentLength?.takeIf { it > 0 },
+                thumbnailUrl = thumbnailUrl,
             )
         } catch (t: Throwable) {
             throw mapError(t)
@@ -137,6 +153,44 @@ class NewPipeAudioDownloader(
         }
     }
 
+    override suspend fun fetchThumbnail(info: VideoInfo): ByteArray? {
+        val url = info.thumbnailUrl ?: return null
+        return withContext(Dispatchers.IO) {
+            try {
+                val thumbnailClient = client.newBuilder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .build()
+                val request = Request.Builder().url(url).build()
+                val bytes = thumbnailClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG_THUMB, "Thumbnail HTTP ${response.code} for $url")
+                        return@withContext null
+                    }
+                    val body = response.body
+                    val contentLength = body.contentLength()
+                    if (contentLength > MAX_THUMB_BYTES) {
+                        Log.w(TAG_THUMB, "Thumbnail too large: $contentLength bytes")
+                        return@withContext null
+                    }
+                    body.bytes()
+                }
+                if (bytes.size > MAX_THUMB_BYTES) {
+                    Log.w(TAG_THUMB, "Thumbnail body too large: ${bytes.size} bytes")
+                    return@withContext null
+                }
+                if (!isJpegOrPng(bytes)) {
+                    Log.w(TAG_THUMB, "Thumbnail is not JPEG or PNG")
+                    return@withContext null
+                }
+                cropAndScaleToJpeg(bytes)
+            } catch (e: Throwable) {
+                Log.w(TAG_THUMB, "fetchThumbnail failed", e)
+                null
+            }
+        }
+    }
+
     private fun pickAudioStream(streams: List<AudioStream>): AudioStream? =
         streams
             .filter { it.format == MediaFormat.M4A && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP && it.isUrl }
@@ -151,6 +205,10 @@ class NewPipeAudioDownloader(
         header?.substringAfterLast('/')?.trim()?.toLongOrNull()
 
     companion object {
+        private const val TAG_THUMB = "SurThumbnail"
+        private const val MAX_THUMB_BYTES = 2 * 1024 * 1024 // 2 MB
+        private const val MAX_SIDE_PX = 600
+
         @Volatile private var initialized = false
 
         private fun ensureInitialized(client: OkHttpClient) {
@@ -167,6 +225,52 @@ class NewPipeAudioDownloader(
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
+
+        /** Returns true if bytes start with JPEG (FF D8 FF) or PNG (89 50 4E 47) magic bytes. */
+        internal fun isJpegOrPng(bytes: ByteArray): Boolean {
+            if (bytes.size < 4) return false
+            val b0 = bytes[0].toInt() and 0xFF
+            val b1 = bytes[1].toInt() and 0xFF
+            val b2 = bytes[2].toInt() and 0xFF
+            val b3 = bytes[3].toInt() and 0xFF
+            return (b0 == 0xFF && b1 == 0xD8 && b2 == 0xFF) || // JPEG
+                (b0 == 0x89 && b1 == 0x50 && b2 == 0x4E && b3 == 0x47) // PNG
+        }
+
+        /**
+         * Decodes [bytes] to a Bitmap, center-crops to a square, scales so the longest side is at
+         * most [MAX_SIDE_PX], and re-encodes as JPEG quality 85.
+         * Returns null on any failure.
+         */
+        internal fun cropAndScaleToJpeg(bytes: ByteArray): ByteArray? {
+            return try {
+                val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+                val w = src.width
+                val h = src.height
+                val side = minOf(w, h)
+                val left = (w - side) / 2
+                val top = (h - side) / 2
+                val cropped = Bitmap.createBitmap(src, left, top, side, side)
+                if (cropped !== src) src.recycle()
+
+                val scale = if (side > MAX_SIDE_PX) MAX_SIDE_PX.toFloat() / side else 1f
+                val scaled = if (scale < 1f) {
+                    val s = Bitmap.createScaledBitmap(cropped, (side * scale).toInt(), (side * scale).toInt(), true)
+                    if (s !== cropped) cropped.recycle()
+                    s
+                } else {
+                    cropped
+                }
+
+                val out = ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                scaled.recycle()
+                out.toByteArray()
+            } catch (e: Throwable) {
+                Log.w(TAG_THUMB, "cropAndScaleToJpeg failed", e)
+                null
+            }
+        }
 
         internal fun checkDownloadComplete(expectedLength: Long?, position: Long) {
             if (expectedLength != null && position != expectedLength) {

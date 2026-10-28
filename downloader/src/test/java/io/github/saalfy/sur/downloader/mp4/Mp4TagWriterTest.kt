@@ -107,4 +107,65 @@ class Mp4TagWriterTest {
         val f = tmp.newFile().apply { writeBytes(ByteArray(64) { 0x41 }) }
         Mp4TagWriter.write(f, "Song", null, null)
     }
+
+    // --- Cover art tests ---
+
+    /** Fake JPEG bytes (magic + payload). Bypass BitmapFactory; we test the tag plumbing only. */
+    private val fakeJpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte()) + ByteArray(96) { (it + 1).toByte() }
+
+    @Test
+    fun coverRoundTrip_exactBytesAndTextTagsReadable() {
+        val f = file(ftyp, mdat, box("moov", mvhd))
+        Mp4TagWriter.write(f, "Title", "Artist", null, fakeJpeg)
+
+        assertArrayEquals(fakeJpeg, Mp4TagWriter.readCover(f))
+        assertEquals(mapOf("©nam" to "Title", "©ART" to "Artist"), Mp4TagWriter.readTags(f))
+    }
+
+    @Test
+    fun coverFallback_notEnoughRoomForCover_writesTextOnly() {
+        // Free box of 100 bytes is big enough for text-only tags (growth < 100)
+        // but too small for cover art (fakeJpeg is 100 bytes alone, total growth > 200).
+        // With-cover attempt fails and falls back to text-only tags.
+        val f = file(ftyp, box("moov", mvhd), box("free", ByteArray(100)), mdat)
+        val placement = Mp4TagWriter.write(f, "Song", null, null, fakeJpeg)
+
+        assertEquals(TagPlacement.MOOV_INTO_FREE_BOX, placement)
+        assertEquals(mapOf("©nam" to "Song"), Mp4TagWriter.readTags(f))
+        assertEquals(null, Mp4TagWriter.readCover(f))
+        assertArrayEquals(mdatPayload, mdatBytes(f))
+    }
+
+    @Test
+    fun noCover_readCoverReturnsNull() {
+        val f = file(ftyp, mdat, box("moov", mvhd))
+        Mp4TagWriter.write(f, "Song", null, null)
+        assertEquals(null, Mp4TagWriter.readCover(f))
+    }
+}
+
+// --- Companion helper tests (pure, no android.graphics) ---
+
+class IsJpegOrPngTest {
+    private fun isJpegOrPng(bytes: ByteArray) =
+        io.github.saalfy.sur.downloader.newpipe.NewPipeAudioDownloader.isJpegOrPng(bytes)
+
+    @Test fun jpegMagicAccepted() {
+        val b = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte())
+        assertEquals(true, isJpegOrPng(b))
+    }
+
+    @Test fun pngMagicAccepted() {
+        val b = byteArrayOf(0x89.toByte(), 0x50.toByte(), 0x4E.toByte(), 0x47.toByte())
+        assertEquals(true, isJpegOrPng(b))
+    }
+
+    @Test fun randomBytesRejected() {
+        val b = byteArrayOf(0x00, 0x01, 0x02, 0x03)
+        assertEquals(false, isJpegOrPng(b))
+    }
+
+    @Test fun tooShortRejected() {
+        assertEquals(false, isJpegOrPng(byteArrayOf(0xFF.toByte(), 0xD8.toByte())))
+    }
 }

@@ -25,7 +25,19 @@ object Mp4TagWriter {
 
     private const val HEADER = 8
 
-    fun write(file: File, title: String, artist: String?, album: String?): TagPlacement {
+    fun write(file: File, title: String, artist: String?, album: String?, coverJpeg: ByteArray? = null): TagPlacement {
+        // If cover is present, try writing with cover first; on TagWriteException retry without cover.
+        if (coverJpeg != null) {
+            try {
+                return writeImpl(file, title, artist, album, coverJpeg)
+            } catch (_: TagWriteException) {
+                // Not enough room for cover; fall back to text-only tags
+            }
+        }
+        return writeImpl(file, title, artist, album, null)
+    }
+
+    private fun writeImpl(file: File, title: String, artist: String?, album: String?, coverJpeg: ByteArray?): TagPlacement {
         RandomAccessFile(file, "rw").use { raf ->
             val boxes = readTopLevelBoxes(raf)
             val moovIndex = boxes.indexOfFirst { it.type == "moov" }
@@ -36,7 +48,7 @@ object Mp4TagWriter {
             val moovBytes = ByteArray(moov.size.toInt())
             raf.seek(moov.offset)
             raf.readFully(moovBytes)
-            val newMoov = withTags(moovBytes, buildMeta(title, artist, album))
+            val newMoov = withTags(moovBytes, buildMeta(title, artist, album, coverJpeg))
             val growth = (newMoov.size - moovBytes.size).toLong()
             val next = boxes.getOrNull(moovIndex + 1)
 
@@ -70,6 +82,7 @@ object Mp4TagWriter {
             val meta = children(bytes, udta.start + HEADER, udta.end).firstOrNull { it.type == "meta" } ?: return emptyMap()
             val ilst = children(bytes, meta.start + HEADER + 4, meta.end).firstOrNull { it.type == "ilst" } ?: return emptyMap()
             return children(bytes, ilst.start + HEADER, ilst.end).mapNotNull { item ->
+                if (item.type == "covr") return@mapNotNull null
                 val data = children(bytes, item.start + HEADER, item.end).firstOrNull { it.type == "data" }
                     ?: return@mapNotNull null
                 val valueStart = data.start + HEADER + 8
@@ -78,9 +91,29 @@ object Mp4TagWriter {
         }
     }
 
+    /**
+     * Reads the cover art bytes from ilst's "covr" item, if present.
+     * Returns the raw payload bytes (after the 8-byte type+locale header in the data box).
+     */
+    fun readCover(file: File): ByteArray? {
+        RandomAccessFile(file, "r").use { raf ->
+            val moov = readTopLevelBoxes(raf).firstOrNull { it.type == "moov" } ?: return null
+            val bytes = ByteArray(moov.size.toInt())
+            raf.seek(moov.offset)
+            raf.readFully(bytes)
+            val udta = children(bytes, HEADER, bytes.size).firstOrNull { it.type == "udta" } ?: return null
+            val meta = children(bytes, udta.start + HEADER, udta.end).firstOrNull { it.type == "meta" } ?: return null
+            val ilst = children(bytes, meta.start + HEADER + 4, meta.end).firstOrNull { it.type == "ilst" } ?: return null
+            val covr = children(bytes, ilst.start + HEADER, ilst.end).firstOrNull { it.type == "covr" } ?: return null
+            val data = children(bytes, covr.start + HEADER, covr.end).firstOrNull { it.type == "data" } ?: return null
+            val payloadStart = data.start + HEADER + 8 // skip 4-byte type flag + 4-byte locale
+            return bytes.copyOfRange(payloadStart, data.end)
+        }
+    }
+
     // --- building ---
 
-    private fun buildMeta(title: String, artist: String?, album: String?): ByteArray {
+    private fun buildMeta(title: String, artist: String?, album: String?, coverJpeg: ByteArray? = null): ByteArray {
         val hdlr = fullBox(
             "hdlr",
             int(0) + latin1("mdir") + latin1("appl") + int(0) + int(0) + byteArrayOf(0),
@@ -89,12 +122,20 @@ object Mp4TagWriter {
             write(textItem("©nam", title))
             artist?.let { write(textItem("©ART", it)) }
             album?.let { write(textItem("©alb", it)) }
+            coverJpeg?.let { write(coverItem(it)) }
         }.toByteArray()
         return fullBox("meta", hdlr + box("ilst", items))
     }
 
     private fun textItem(type: String, value: String): ByteArray =
         box(type, box("data", int(1) + int(0) + value.toByteArray(Charsets.UTF_8)))
+
+    /**
+     * Builds a "covr" ilst item with a "data" box.
+     * Type flag 13 = JPEG (per iTunes Metadata Format Specification).
+     */
+    private fun coverItem(jpegBytes: ByteArray): ByteArray =
+        box("covr", box("data", int(13) + int(0) + jpegBytes))
 
     /** Inserts [meta] into moov's udta (creating udta if needed) and fixes the box sizes. */
     private fun withTags(moov: ByteArray, meta: ByteArray): ByteArray {

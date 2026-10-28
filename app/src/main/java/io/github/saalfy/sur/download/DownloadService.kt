@@ -176,19 +176,29 @@ class DownloadService : Service() {
                     raw.copyTo(remuxed, overwrite = true)
                 }
 
-                // 5. Mp4TagWriter (with fallback)
+                // 5. Fetch thumbnail (never fails the download)
+                val coverJpeg = try {
+                    withContext(Dispatchers.IO) {
+                        downloader.fetchThumbnail(info)
+                    }
+                } catch (t: Throwable) {
+                    Log.w("SurDownload", "fetchThumbnail threw unexpectedly", t)
+                    null
+                }
+
+                // 6. Mp4TagWriter (with fallback)
                 try {
                     withContext(Dispatchers.IO) {
-                        Mp4TagWriter.write(remuxed, info.title, info.artist, DOWNLOAD_ALBUM)
+                        Mp4TagWriter.write(remuxed, info.title, info.artist, null, coverJpeg)
                     }
                 } catch (t: Throwable) {
                     Log.w("SurDownload", "Mp4TagWriter.write failed", t)
                 }
 
-                // 6. AudioFileSaver.save
+                // 7. AudioFileSaver.save
                 val fileName = audioFileName(info.title, info.artist)
                 val saved = AudioFileSaver(this@DownloadService)
-                    .save(remuxed, fileName, info.title, info.artist, DOWNLOAD_ALBUM)
+                    .save(remuxed, fileName, info.title, info.artist, null)
 
                 DownloadManager.updateState(DownloadState.Done(saved.songId, info.title))
             } catch (e: CancellationException) {
@@ -288,7 +298,6 @@ class DownloadService : Service() {
         const val ACTION_CANCEL = "io.github.saalfy.sur.download.action.CANCEL"
         private const val NOTIFICATION_ID = 4001
         private const val CHANNEL_ID = "sur_download_channel"
-        private const val DOWNLOAD_ALBUM = "Sur downloads"
 
         fun start(context: Context, link: String) {
             val intent = Intent(context, DownloadService::class.java).apply {
