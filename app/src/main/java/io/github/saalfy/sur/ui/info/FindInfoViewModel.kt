@@ -185,7 +185,7 @@ class FindInfoViewModel(
                 if (results.isEmpty() && artist != null) {
                     results = lookup.search(query.copy(artist = null), limit = TITLE_ONLY_LIMIT)
                 }
-                val ranked = CandidateRanker.rank(results, song.durationMs)
+                val ranked = CandidateRanker.rank(results, song.durationMs, wantedArtist = artist)
                 _uiState.update {
                     if (ranked.isEmpty()) {
                         it.copy(searchState = SearchState.Empty)

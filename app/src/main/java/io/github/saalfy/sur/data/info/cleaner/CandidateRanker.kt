@@ -23,11 +23,24 @@ object CandidateRanker {
         }
     }
 
+    private const val ARTIST_MATCH_THRESHOLD = 0.8
+
     /**
-     * Orders candidates by MusicBrainz score descending, tie-breaking by duration closeness.
+     * Orders candidates whose artist is close to [wantedArtist] first, then by MusicBrainz
+     * score descending, tie-breaking by duration closeness.
      */
-    fun rank(candidates: List<Candidate>, targetDurationMs: Long?): List<Candidate> {
+    fun rank(
+        candidates: List<Candidate>,
+        targetDurationMs: Long?,
+        wantedArtist: String? = null,
+    ): List<Candidate> {
+        val artistMatch = candidates.associateWith {
+            artistSimilarity(it.artist, wantedArtist) >= ARTIST_MATCH_THRESHOLD
+        }
         return candidates.sortedWith { a, b ->
+            val artistCmp = artistMatch.getValue(b).compareTo(artistMatch.getValue(a))
+            if (artistCmp != 0) return@sortedWith artistCmp
+
             val scoreCmp = b.score.compareTo(a.score)
             if (scoreCmp != 0) return@sortedWith scoreCmp
 
