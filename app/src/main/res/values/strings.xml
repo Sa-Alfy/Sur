@@ -78,7 +78,7 @@
     <string name="about">About</string>
     <string name="about_title">Sur %1$s</string>
     <string name="about_description">A lightweight, open-source music player for the music on your phone.</string>
-    <string name="about_privacy">No accounts, ads or analytics. Network is used only for downloads you start and for Find info lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).</string>
+    <string name="about_privacy">No accounts, ads or analytics. Network is used only for downloads you start and for Find cover &amp; details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).</string>
     <string name="about_developer_label">Developer</string>
     <string name="about_developer_name">Shariar Ahamed</string>
     <string name="about_developer_github">GitHub: Sa-Alfy</string>
