@@ -182,23 +182,24 @@ fun DownloadScreen(
                 shape = RoundedCornerShape(12.dp),
             )
 
-            Row(
+            // Stacked full-width buttons: no side-by-side squeeze at large font scales
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
                     onClick = {
                         val clip = clipboardManager.getText()?.text
                         if (!clip.isNullOrBlank()) urlInput = clip.trim()
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.download_paste))
                 }
                 Button(
                     onClick = startDownload,
                     enabled = urlInput.isNotBlank() && !isBusy,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(painterResource(R.drawable.ic_download), contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -246,28 +247,26 @@ fun DownloadScreen(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                            TextButton(onClick = { DownloadManager.reset() }) { Text(stringResource(R.string.download_dismiss)) }
-                            Button(onClick = { playDownloaded(state.songId) }) {
-                                Icon(painterResource(R.drawable.ic_play), contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.play))
-                            }
+                        Button(onClick = { playDownloaded(state.songId) }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(painterResource(R.drawable.ic_play), contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.play))
+                        }
+                        TextButton(onClick = { DownloadManager.reset() }, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.download_dismiss))
                         }
                     }
                     is DownloadState.Error -> StatusCard(container = MaterialTheme.colorScheme.errorContainer) {
                         val onContainer = MaterialTheme.colorScheme.onErrorContainer
                         Text(stringResource(R.string.download_failed_title), style = MaterialTheme.typography.titleMedium, color = onContainer)
                         Text(state.error.userMessage(), style = MaterialTheme.typography.bodyMedium, color = onContainer)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                            TextButton(onClick = { DownloadManager.reset() }) {
-                                Text(stringResource(R.string.download_dismiss), color = onContainer)
+                        if (urlInput.isNotBlank()) {
+                            Button(onClick = { DownloadManager.reset(); startDownload() }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.download_try_again))
                             }
-                            if (urlInput.isNotBlank()) {
-                                Button(onClick = { DownloadManager.reset(); startDownload() }) {
-                                    Text(stringResource(R.string.download_try_again))
-                                }
-                            }
+                        }
+                        TextButton(onClick = { DownloadManager.reset() }, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.download_dismiss), color = onContainer)
                         }
                     }
                 }
