@@ -11,3 +11,6 @@ Install `app/build/outputs/apk/debug/app-debug.apk`. Verify the single-song Find
 7. **Airplane mode shows a plain error**: turn on Airplane Mode (disconnect from network). Open "Find info" and tap "Search". Verify a plain-language error message ("Couldn't reach the service") is displayed without crashing. ☐
 8. **Skip**: open "Find info" for an unmodified song and tap "Skip". Verify the song is marked skipped in the database and the sheet dismisses cleanly. ☐
 9. **Android 13+ phone**: verify the Find info workflow, consent, cover preview, and overlay updates on an Android 13+ device. ☐
+10. **Billie Eilish - bury a friend is found without editing**: open "Find info" for the file `Bille Eilish - Billie Eilish - bury a friend.m4a` (tag artist "Bille Eilish"). Verify the fields show title "bury a friend" and artist "Billie Eilish", tap "Search" without editing anything, and verify the Billie Eilish recording is listed first. ☐
+11. **bury a friend cover preview**: tap the Billie Eilish candidate. Verify the cover art preview appears. ☐
+12. **bury a friend Apply updates the cover**: tap Apply. Verify the new cover shows in the Songs list, Mini player and Now Playing. ☐
