@@ -122,10 +122,14 @@ class NewPipeAudioDownloader(
                                 onProgress(position, total)
                             }
                         }
+                        if (total != null && position < total && readThisChunk == 0L) {
+                            throw IOException("Stream returned 0 bytes while $position < $total")
+                        }
                         // 200 means the server ignored Range and sent the whole file.
                         if (response.code == 200 || readThisChunk == 0L) total = position
                     }
                 }
+                checkDownloadComplete(info.contentLength, position)
             }
         } catch (t: Throwable) {
             target.delete()
@@ -163,6 +167,12 @@ class NewPipeAudioDownloader(
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
+
+        internal fun checkDownloadComplete(expectedLength: Long?, position: Long) {
+            if (expectedLength != null && position != expectedLength) {
+                throw DownloadException(DownloadError.Failed)
+            }
+        }
 
         /** Maps library and network exceptions to user-facing [DownloadError]s. */
         internal fun mapError(t: Throwable): Throwable = when (t) {

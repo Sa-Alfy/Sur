@@ -68,4 +68,34 @@ class NewPipeAudioDownloaderTest {
         assertTrue(result is DownloadException)
         assertEquals(DownloadError.NotEnoughStorage(0), (result as DownloadException).error)
     }
+
+    @Test
+    fun checkDownloadComplete_matchingLength_doesNotThrow() {
+        NewPipeAudioDownloader.checkDownloadComplete(1000L, 1000L)
+    }
+
+    @Test
+    fun checkDownloadComplete_nullExpectedLength_doesNotThrow() {
+        NewPipeAudioDownloader.checkDownloadComplete(null, 500L)
+    }
+
+    @Test
+    fun checkDownloadComplete_truncated_throwsDownloadExceptionFailed() {
+        try {
+            NewPipeAudioDownloader.checkDownloadComplete(1000L, 800L)
+            org.junit.Assert.fail("Expected DownloadException")
+        } catch (e: DownloadException) {
+            assertEquals(DownloadError.Failed, e.error)
+        }
+    }
+
+    @Test
+    fun checkDownloadComplete_oversized_throwsDownloadExceptionFailed() {
+        try {
+            NewPipeAudioDownloader.checkDownloadComplete(1000L, 1200L)
+            org.junit.Assert.fail("Expected DownloadException")
+        } catch (e: DownloadException) {
+            assertEquals(DownloadError.Failed, e.error)
+        }
+    }
 }
