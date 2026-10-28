@@ -1,9 +1,10 @@
 # Release v0.3.3
 
 ## What's new
-- **Metadata and cover caching engine**: integrated offline metadata overlay and disk-cached cover artwork support.
-- **Stable song identification**: cross-device stable song identification keys preserving user overlays and cached metadata across library rescans.
-- **Cover artwork integration**: seamless artwork fallback between user/cached covers, embedded ID3 tags, and MediaStore.
+- **Groundwork (data layer, cache, stable keys) with no visible change yet**:
+  - **Data layer**: Room database schema and repository for offline metadata overlays.
+  - **Cache**: disk caching and image scaling for cover artwork.
+  - **Stable keys**: cross-device song keys preserving overlays across library rescans.
 - **CI automation**: automated continuous integration pipeline testing builds on push.
 
 ## Updating
