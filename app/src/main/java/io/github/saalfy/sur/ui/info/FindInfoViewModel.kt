@@ -64,6 +64,8 @@ data class FindInfoUiState(
     val resolvedKey: String? = null,
     val hasExistingApplied: Boolean = false,
     val searchState: SearchState = SearchState.Idle,
+    /** True if the last search used title + artist before falling back to title only. */
+    val searchTriedArtist: Boolean = false,
     val candidates: List<Candidate> = emptyList(),
     val selectedCandidate: Candidate? = null,
     val coverState: CoverState = CoverState.Idle,
@@ -188,7 +190,7 @@ class FindInfoViewModel(
                 val ranked = CandidateRanker.rank(results, song.durationMs, wantedArtist = artist)
                 _uiState.update {
                     if (ranked.isEmpty()) {
-                        it.copy(searchState = SearchState.Empty)
+                        it.copy(searchState = SearchState.Empty, searchTriedArtist = artist != null)
                     } else {
                         it.copy(searchState = SearchState.Success, candidates = ranked)
                     }

@@ -141,6 +141,9 @@
     <string name="find_info_try_another_query">Try another query</string>
     <string name="find_info_searching">MusicBrainz is searching…</string>
     <string name="find_info_no_results">No results found.</string>
+    <string name="find_info_tried_title_artist_then_title">Tried: title + artist, then title only</string>
+    <string name="find_info_tried_title_only">Tried: title only</string>
+    <string name="find_info_check_title_spelling">Check the spelling of the title</string>
     <string name="find_info_err_busy">MusicBrainz is busy, try again in a minute</string>
     <string name="find_info_err_network">Couldn\'t reach the service</string>
     <string name="find_info_err_http">MusicBrainz returned an error (%1$d).</string>

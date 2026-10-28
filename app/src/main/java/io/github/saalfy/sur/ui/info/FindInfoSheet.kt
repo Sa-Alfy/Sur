@@ -165,12 +165,29 @@ fun FindInfoSheet(
                 }
 
                 SearchState.Empty -> {
-                    Text(
-                        text = stringResource(R.string.find_info_no_results),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp),
-                    )
+                    Column(modifier = Modifier.padding(vertical = 16.dp)) {
+                        Text(
+                            text = stringResource(R.string.find_info_no_results),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = stringResource(
+                                if (uiState.searchTriedArtist) {
+                                    R.string.find_info_tried_title_artist_then_title
+                                } else {
+                                    R.string.find_info_tried_title_only
+                                }
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = stringResource(R.string.find_info_check_title_spelling),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 is SearchState.Error -> {
