@@ -173,8 +173,9 @@ fun rememberArtworkLoader(): ArtworkLoader {
 }
 
 /**
- * Album art for a song, or a music-note placeholder. [size] is the largest size it will be drawn
- * at. In lazy lists, resolve [loader] and [sizePx] once in the parent and pass them in.
+ * Album art for a song, or [placeholder] (a music note by default) while there is no bitmap.
+ * [size] is the largest size it will be drawn at. In lazy lists, resolve [loader] and [sizePx]
+ * once in the parent and pass them in.
  */
 @Composable
 fun Artwork(
@@ -185,6 +186,7 @@ fun Artwork(
     shape: Shape = RoundedCornerShape(8.dp),
     loader: ArtworkLoader = rememberArtworkLoader(),
     sizePx: Int = with(LocalDensity.current) { size.roundToPx() },
+    placeholder: @Composable () -> Unit = { ArtworkPlaceholderIcon() },
 ) {
     val bitmap by produceState(
         initialValue = songId?.let { loader.cached(it, sizePx) },
@@ -209,11 +211,16 @@ fun Artwork(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Icon(
-                painter = painterResource(R.drawable.ic_music_note),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            placeholder()
         }
     }
+}
+
+@Composable
+fun ArtworkPlaceholderIcon() {
+    Icon(
+        painter = painterResource(R.drawable.ic_music_note),
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.primary,
+    )
 }

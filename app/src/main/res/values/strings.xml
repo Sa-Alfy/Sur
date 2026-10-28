@@ -132,9 +132,8 @@
     <string name="ok">OK</string>
 
     <!-- Find info -->
-    <string name="find_info">Find info</string>
-    <string name="find_info_consent_title">Find info</string>
-    <string name="find_info_consent_message">Find info sends the song\'s title and artist text to musicbrainz.org to find matches, and downloads cover images from coverartarchive.org (served via archive.org). No audio files or personal data are sent. Matches are saved only on this phone.</string>
+    <string name="find_info">Find cover &amp; details</string>
+    <string name="find_info_consent_message">Find cover &amp; details sends the song\'s title and artist text to musicbrainz.org to find matches, and downloads cover images from coverartarchive.org (served via archive.org). No audio files or personal data are sent. Matches are saved only on this phone.</string>
     <string name="allow">Allow</string>
     <string name="find_info_searching">Looking for matches…</string>
     <string name="find_info_not_found">Couldn\'t find this song</string>

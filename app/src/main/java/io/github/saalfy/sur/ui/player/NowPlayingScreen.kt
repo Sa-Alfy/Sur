@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -43,6 +44,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,19 +54,26 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import io.github.saalfy.sur.R
+import io.github.saalfy.sur.SurApplication
+import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.playback.PlayerUiState
 import io.github.saalfy.sur.playback.PositionTicker
 import io.github.saalfy.sur.playback.songId
 import io.github.saalfy.sur.ui.artwork.Artwork
+import io.github.saalfy.sur.ui.artwork.ArtworkPlaceholderIcon
 import io.github.saalfy.sur.ui.artwork.ThumbnailSize
 import io.github.saalfy.sur.ui.artwork.rememberArtworkLoader
 import io.github.saalfy.sur.ui.common.formatDuration
+import io.github.saalfy.sur.ui.info.FindInfoHost
+import io.github.saalfy.sur.ui.info.findSongById
+import kotlinx.coroutines.launch
 
 private val LargeArtSize = 360.dp
 private val ArtShape = RoundedCornerShape(24.dp)
@@ -74,6 +83,15 @@ private const val ACCENT_ANIM_MS = 450
 @Composable
 fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
     var showQueue by rememberSaveable { mutableStateOf(false) }
+    var findInfoSong by remember { mutableStateOf<Song?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val onFindInfo: (Long) -> Unit = { songId ->
+        scope.launch {
+            val repository = (context.applicationContext as SurApplication).container.songRepository
+            findInfoSong = findSongById(repository, songId)
+        }
+    }
     BackHandler { if (showQueue) showQueue = false else onClose() }
 
     // Art-driven accent. The animated States are passed down and only read by the few elements
@@ -125,7 +143,7 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
                 val landscape = maxWidth > maxHeight
                 val main: @Composable (Modifier) -> Unit = { modifier ->
                     Crossfade(targetState = showQueue, modifier = modifier, label = "artOrQueue") { queue ->
-                        if (queue) QueueList(state, Modifier.fillMaxSize()) else ArtPane(state, Modifier.fillMaxSize())
+                        if (queue) QueueList(state, Modifier.fillMaxSize()) else ArtPane(state, Modifier.fillMaxSize(), onFindInfo)
                     }
                 }
                 if (landscape) {
@@ -149,11 +167,12 @@ fun NowPlayingScreen(state: PlayerUiState?, onClose: () -> Unit) {
                 }
             }
         }
+        FindInfoHost(song = findInfoSong, onFinished = { findInfoSong = null })
     }
 }
 
 @Composable
-private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
+private fun ArtPane(state: PlayerUiState, modifier: Modifier, onFindInfo: (Long) -> Unit) {
     val item = state.currentItem ?: return
     BoxWithConstraints(modifier.padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, maxHeight, LargeArtSize)
@@ -167,6 +186,23 @@ private fun ArtPane(state: PlayerUiState, modifier: Modifier) {
                         size = side,
                         shape = ArtShape,
                         modifier = Modifier.fillMaxSize(),
+                        placeholder = {
+                            // No art: offer Find cover & details right on the placeholder
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp),
+                            ) {
+                                ArtworkPlaceholderIcon()
+                                if (id != null) {
+                                    FilledTonalButton(
+                                        onClick = { onFindInfo(id) },
+                                        modifier = Modifier.padding(top = 16.dp),
+                                    ) {
+                                        Text(stringResource(R.string.find_info))
+                                    }
+                                }
+                            }
+                        },
                     )
                 }
             }
