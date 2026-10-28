@@ -136,11 +136,16 @@
     <string name="find_info_consent_title">Find info</string>
     <string name="find_info_consent_message">Find info sends the song\'s title and artist text to musicbrainz.org to find matches, and downloads cover images from coverartarchive.org (served via archive.org). No audio files or personal data are sent. Matches are saved only on this phone.</string>
     <string name="allow">Allow</string>
-    <string name="find_info_title">Title</string>
-    <string name="find_info_artist">Artist</string>
-    <string name="find_info_try_another_query">Try another query</string>
-    <string name="find_info_searching">MusicBrainz is searching…</string>
-    <string name="find_info_no_results">No results found.</string>
+    <string name="find_info_searching">Looking for matches…</string>
+    <string name="find_info_not_found">Couldn\'t find this song</string>
+    <string name="find_info_now">Now: %1$s — %2$s</string>
+    <string name="find_info_now_title_only">Now: %1$s</string>
+    <string name="find_info_use_match">Use this match</string>
+    <string name="find_info_cover_only">Cover only</string>
+    <string name="find_info_no_cover_for_match">No cover found for this match</string>
+    <string name="find_info_not_this_one">Not this one?</string>
+    <string name="find_info_search_yourself">Search yourself</string>
+    <string name="find_info_search_placeholder">song name or artist - song name</string>
     <string name="find_info_tried_title_artist_then_title">Tried: title + artist, then title only</string>
     <string name="find_info_tried_title_only">Tried: title only</string>
     <string name="find_info_check_title_spelling">Check the spelling of the title</string>
@@ -148,14 +153,8 @@
     <string name="find_info_err_network">Couldn\'t reach the service</string>
     <string name="find_info_err_http">MusicBrainz returned an error (%1$d).</string>
     <string name="find_info_err_generic">Couldn\'t complete lookup.</string>
-    <string name="find_info_loading_cover">Finding cover art…</string>
-    <string name="find_info_no_cover">No cover found</string>
-    <string name="find_info_apply">Apply</string>
     <string name="find_info_skip">Skip</string>
     <string name="find_info_remove">Remove found info</string>
     <string name="find_info_cover_preview">Cover preview</string>
-    <string name="find_info_match_count">%1$d matches found — tap to select</string>
-    <string name="find_info_cover_found">Cover art found</string>
-    <string name="find_info_cover_saved_locally">Will be saved to this phone</string>
 </resources>
 

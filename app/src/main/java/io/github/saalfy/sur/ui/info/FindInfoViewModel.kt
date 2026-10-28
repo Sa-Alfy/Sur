@@ -59,6 +59,8 @@ sealed interface CoverState {
 data class FindInfoUiState(
     val titleInput: String = "",
     val artistInput: String = "",
+    /** The single "Search yourself" field: "song name" or "artist - song name". */
+    val freeTextInput: String = "",
     val variants: List<LookupQuery> = emptyList(),
     val currentVariantIndex: Int = 0,
     val resolvedKey: String? = null,
@@ -179,12 +181,24 @@ class FindInfoViewModel(
         }
     }
 
+    fun onFreeTextChanged(text: String) {
+        _uiState.update { it.copy(freeTextInput = text) }
+    }
+
     fun search() {
         val title = _uiState.value.titleInput.trim()
         if (title.isBlank()) return
         val artist = _uiState.value.artistInput.trim().ifEmpty { null }
-        val query = LookupQuery(title = title, artist = artist, durationMs = song.durationMs)
+        runSearch(LookupQuery(title = title, artist = artist, durationMs = song.durationMs))
+    }
 
+    fun searchFreeText() {
+        val query = parseFreeText(_uiState.value.freeTextInput, song.durationMs) ?: return
+        runSearch(query)
+    }
+
+    private fun runSearch(query: LookupQuery) {
+        val artist = query.artist
         cancelWork()
 
         searchJob = viewModelScope.launch(ioDispatcher) {
@@ -210,6 +224,8 @@ class FindInfoViewModel(
                         it.copy(searchState = SearchState.Success, candidates = ranked)
                     }
                 }
+                // Preselect the best match so its cover loads without a tap
+                ranked.firstOrNull()?.let { selectCandidate(it) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: LookupBusyException) {
@@ -250,7 +266,16 @@ class FindInfoViewModel(
         }
     }
 
-    fun apply(onSuccess: () -> Unit) {
+    /** Applies title, artist, album and cover of the selected match. */
+    fun apply(onSuccess: () -> Unit) = applySelected(coverOnly = false, onSuccess)
+
+    /** Applies only the cover; null title/artist/album keep the song's own tags. */
+    fun applyCoverOnly(onSuccess: () -> Unit) {
+        if (_uiState.value.coverState !is CoverState.Success) return
+        applySelected(coverOnly = true, onSuccess)
+    }
+
+    private fun applySelected(coverOnly: Boolean, onSuccess: () -> Unit) {
         val candidate = _uiState.value.selectedCandidate ?: return
         val key = _uiState.value.resolvedKey ?: return
 
@@ -286,9 +311,9 @@ class FindInfoViewModel(
 
                 infoRepository.apply(
                     key = key,
-                    title = candidate.title,
-                    artist = candidate.artist,
-                    album = candidate.releaseTitle,
+                    title = if (coverOnly) null else candidate.title,
+                    artist = if (coverOnly) null else candidate.artist,
+                    album = if (coverOnly) null else candidate.releaseTitle,
                     coverFile = newCoverFile,
                     mbRecordingId = candidate.recordingId,
                 )
@@ -356,6 +381,28 @@ class FindInfoViewModel(
 
     companion object {
         private const val TITLE_ONLY_LIMIT = 25
+
+        /**
+         * Parses the "Search yourself" text: "artist - song name" splits on the first " - ",
+         * anything else is a title-only query. Returns null if there is nothing to search.
+         */
+        fun parseFreeText(text: String, durationMs: Long? = null): LookupQuery? {
+            val cleaned = QueryCleaner.cleanText(text)
+            if (!cleaned.any { it.isLetterOrDigit() }) return null
+            val sepIdx = cleaned.indexOf(" - ")
+            if (sepIdx >= 0) {
+                val artist = cleaned.substring(0, sepIdx).trim()
+                val title = cleaned.substring(sepIdx + 3).trim()
+                if (title.any { it.isLetterOrDigit() }) {
+                    return LookupQuery(
+                        title = title,
+                        artist = artist.takeIf { a -> a.any { it.isLetterOrDigit() } },
+                        durationMs = durationMs,
+                    )
+                }
+            }
+            return LookupQuery(title = cleaned, artist = null, durationMs = durationMs)
+        }
 
         fun factory(song: Song, context: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
