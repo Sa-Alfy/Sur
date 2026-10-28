@@ -42,6 +42,15 @@ object QueryCleaner {
         val cleanTagArtist = tagArtist?.let { cleanText(it) }?.takeIf { it.any { c -> c.isLetterOrDigit() } }
 
         if (cleanTagTitle != null) {
+            // Tag title shaped like "Artist - Title": offer the split first
+            val sepIdx = cleanTagTitle.indexOf(" - ")
+            if (sepIdx >= 0) {
+                val splitArtist = cleanTagTitle.substring(0, sepIdx).trim()
+                val splitTitle = cleanTagTitle.substring(sepIdx + 3).trim()
+                if (splitArtist.any { it.isLetterOrDigit() } && splitTitle.any { it.isLetterOrDigit() }) {
+                    variants.add(LookupQuery(title = splitTitle, artist = splitArtist, durationMs = durationMs))
+                }
+            }
             if (cleanTagArtist != null) {
                 variants.add(LookupQuery(title = cleanTagTitle, artist = cleanTagArtist, durationMs = durationMs))
             }
@@ -139,7 +148,16 @@ object QueryCleaner {
 
         // 2. Check for "Artist - Title" or "Title - Artist"
         if (text.contains(" - ")) {
-            val parts = text.split(" - ").map { it.trim() }.filter { it.isNotEmpty() }
+            var parts = text.split(" - ").map { it.trim() }.filter { it.isNotEmpty() }
+            // "Channel - Artist - Title": drop the first segment if it repeats the start of the next one
+            if (parts.size >= 3) {
+                val firstWordCount = parts[0].split(' ').size
+                val nextStart = parts[1].split(' ').take(firstWordCount).joinToString(" ")
+                if (artistSimilarity(parts[0], nextStart) >= 0.8) {
+                    parts = parts.drop(1)
+                }
+            }
+            val joined = parts.joinToString(" - ")
             if (parts.size >= 2) {
                 val part1 = parts[0]
                 val part2 = parts.subList(1, parts.size).joinToString(" - ")
@@ -160,7 +178,7 @@ object QueryCleaner {
                     list.add(LookupQuery(title = part2, artist = part1, durationMs = durationMs))
                     list.add(LookupQuery(title = part1, artist = part2, durationMs = durationMs))
                 }
-                list.add(LookupQuery(title = text, artist = null, durationMs = durationMs))
+                list.add(LookupQuery(title = joined, artist = null, durationMs = durationMs))
                 return list
             }
         }
