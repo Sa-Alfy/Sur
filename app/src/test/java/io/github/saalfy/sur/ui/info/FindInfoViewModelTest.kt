@@ -181,6 +181,131 @@ class FindInfoViewModelTest {
         assertTrue(vm.uiState.value.searchTriedArtist)
     }
 
+    // --- 9-4A: auto search, preselect, cover only, free text ---
+
+    private val imagine = Candidate("rec-1", "Imagine", "John Lennon", "Imagine", "1971", 183_000L, 100, listOf("rel-1"))
+    private val imagineLive = Candidate("rec-2", "Imagine (live)", "John Lennon", "Live", "1986", 190_000L, 90, listOf("rel-2"))
+
+    @Test
+    fun autoSearch_runsOnceWithFirstVariant_andNotBeforeItIsStarted() = runBlocking {
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup)
+        assertTrue(fakeLookup.searchCalls.isEmpty())
+
+        vm.startAutoSearch()
+        vm.startAutoSearch()
+
+        assertEquals(1, fakeLookup.searchCalls.size)
+        assertEquals(LookupQuery("Imagine", "John Lennon", 183_000L), fakeLookup.searchCalls[0].first)
+    }
+
+    @Test
+    fun autoSearch_usesTitleOnlyFallback() = runBlocking {
+        val fakeLookup = FakeSongInfoLookup(searchResult = emptyList(), fallbackResult = listOf(imagine))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup)
+
+        vm.startAutoSearch()
+
+        assertEquals(2, fakeLookup.searchCalls.size)
+        assertNull(fakeLookup.searchCalls[1].first.artist)
+        assertEquals(SearchState.Success, vm.uiState.value.searchState)
+    }
+
+    @Test
+    fun findInfoStep_sheetOnlyAfterConsent() {
+        assertEquals(FindInfoStep.None, findInfoStep(requested = false, consentGiven = false))
+        assertEquals(FindInfoStep.None, findInfoStep(requested = false, consentGiven = true))
+        assertEquals(FindInfoStep.Consent, findInfoStep(requested = true, consentGiven = false))
+        assertEquals(FindInfoStep.Sheet, findInfoStep(requested = true, consentGiven = true))
+    }
+
+    @Test
+    fun search_preselectsBestCandidate_andRequestsItsCover() = runBlocking {
+        val coverBytes = byteArrayOf(1, 2, 3)
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagineLive, imagine), coverBytes = coverBytes)
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup)
+
+        vm.startAutoSearch()
+
+        val state = vm.uiState.value
+        assertEquals(imagine, state.selectedCandidate)
+        assertEquals(listOf(imagine), fakeLookup.coverRequests)
+        assertEquals(CoverState.Success(coverBytes), state.coverState)
+    }
+
+    @Test
+    fun coverOnly_appliesNullTitleArtistAlbum_withCoverFile() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(9, 9))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        vm.startAutoSearch()
+
+        var done = false
+        vm.applyCoverOnly { done = true }
+
+        assertTrue(done)
+        val saved = fakeRepo.get("Music/Sur/imagine.mp3")
+        assertNotNull(saved)
+        assertNull(saved!!.title)
+        assertNull(saved.artist)
+        assertNull(saved.album)
+        assertEquals("saved_0.jpg", saved.coverFile)
+        assertEquals("rec-1", saved.mbRecordingId)
+    }
+
+    @Test
+    fun coverOnly_withoutCover_doesNothing() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = null)
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        vm.startAutoSearch()
+
+        var done = false
+        vm.applyCoverOnly { done = true }
+
+        assertFalse(done)
+        assertNull(fakeRepo.get("Music/Sur/imagine.mp3"))
+    }
+
+    @Test
+    fun parseFreeText_artistDashTitle_andTitleOnly() {
+        val split = FindInfoViewModel.parseFreeText("billie eilish - bury a friend")!!
+        assertEquals("bury a friend", split.title)
+        assertTrue("Billie Eilish".equals(split.artist, ignoreCase = true))
+
+        val titleOnly = FindInfoViewModel.parseFreeText("bury a friend")!!
+        assertEquals("bury a friend", titleOnly.title)
+        assertNull(titleOnly.artist)
+
+        assertNull(FindInfoViewModel.parseFreeText("  - _ "))
+    }
+
+    @Test
+    fun searchFreeText_searchesParsedQuery() = runBlocking {
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup)
+
+        vm.onFreeTextChanged("billie eilish - bury a friend")
+        vm.searchFreeText()
+
+        val query = fakeLookup.searchCalls.single().first
+        assertEquals("bury a friend", query.title)
+        assertTrue("Billie Eilish".equals(query.artist, ignoreCase = true))
+    }
+
+    @Test
+    fun selectingAnotherCandidate_swapsMatch_andRequestsItsCover() = runBlocking {
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine, imagineLive), coverBytes = byteArrayOf(1))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup)
+        vm.startAutoSearch()
+        assertEquals(imagine, vm.uiState.value.selectedCandidate)
+
+        vm.selectCandidate(imagineLive)
+
+        assertEquals(imagineLive, vm.uiState.value.selectedCandidate)
+        assertEquals(listOf(imagine, imagineLive), fakeLookup.coverRequests)
+    }
+
     @Test
     fun search_busyException_setsBusyError() = runBlocking {
         val fakeLookup = FakeSongInfoLookup(searchError = LookupBusyException())
@@ -406,7 +531,10 @@ class FindInfoViewModelTest {
             return searchResult
         }
 
+        val coverRequests = mutableListOf<Candidate>()
+
         override suspend fun fetchCover(candidate: Candidate): ByteArray? {
+            coverRequests.add(candidate)
             return coverBytes
         }
     }
