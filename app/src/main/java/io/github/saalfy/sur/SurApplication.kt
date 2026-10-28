@@ -12,7 +12,9 @@ import io.github.saalfy.sur.data.info.OverlaySongRepository
 import io.github.saalfy.sur.data.info.RoomSongInfoRepository
 import io.github.saalfy.sur.data.info.SongInfoEntity
 import io.github.saalfy.sur.data.info.SongInfoRepository
+import io.github.saalfy.sur.data.info.SongKeyResolver
 import io.github.saalfy.sur.data.info.SurInfoDatabase
+import io.github.saalfy.sur.data.info.lookup.MusicBrainzSongInfoLookup
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.RoomPlaylistRepository
 import io.github.saalfy.sur.download.DownloadManager
@@ -41,8 +43,18 @@ class AppContainer(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val mediaStoreSongs = MediaStoreSongRepository(context, appScope)
-    private val songKeyResolver = MediaStoreSongKeyResolver(context)
+    val songKeyResolver: SongKeyResolver = MediaStoreSongKeyResolver(context)
     val coverStore: CoverStore by lazy { CoverStore(context) }
+
+    val songInfoLookup: MusicBrainzSongInfoLookup by lazy {
+        val versionName = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "unknown"
+        } catch (_: Exception) {
+            "unknown"
+        }
+        MusicBrainzSongInfoLookup(versionName = versionName)
+    }
 
     // Lazy info repository so database is not opened eagerly.
     val songInfoRepository: SongInfoRepository by lazy {

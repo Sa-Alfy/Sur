@@ -10,7 +10,12 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_BATTERY_PROMPT_DONE, false)
         set(value) = prefs.edit { putBoolean(KEY_BATTERY_PROMPT_DONE, value) }
 
+    var findInfoConsent: Boolean
+        get() = prefs.getBoolean(KEY_FIND_INFO_CONSENT, false)
+        set(value) = prefs.edit { putBoolean(KEY_FIND_INFO_CONSENT, value) }
+
     private companion object {
         const val KEY_BATTERY_PROMPT_DONE = "battery_prompt_done"
+        const val KEY_FIND_INFO_CONSENT = "find_info_consent"
     }
 }
