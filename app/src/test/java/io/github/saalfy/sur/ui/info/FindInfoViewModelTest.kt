@@ -118,6 +118,69 @@ class FindInfoViewModelTest {
         assertTrue(vm.uiState.value.candidates.isEmpty())
     }
 
+    private val buryAFriendSong = Song(
+        id = 200L,
+        title = "Billie Eilish - bury a friend",
+        artist = "Bille Eilish",
+        album = null,
+        albumId = 0L,
+        durationMs = 193_000L,
+    )
+
+    @Test
+    fun search_strictEmpty_fallsBackToTitleOnly_andRanksMatchingArtistFirst() = runBlocking {
+        val coverVersion = Candidate("rec-cover", "bury a friend", "Some Cover Band", null, null, 193_000L, 100, emptyList())
+        val original = Candidate("rec-real", "bury a friend", "Billie Eilish", null, null, 193_000L, 95, emptyList())
+        val fakeLookup = FakeSongInfoLookup(
+            searchResult = emptyList(),
+            fallbackResult = listOf(coverVersion, original),
+        )
+        val vm = createViewModel(
+            song = buryAFriendSong,
+            lookup = fakeLookup,
+            displayName = "Bille Eilish - Billie Eilish - bury a friend.m4a",
+        )
+        assertEquals("bury a friend", vm.uiState.value.titleInput)
+        assertEquals("Billie Eilish", vm.uiState.value.artistInput)
+
+        vm.search()
+
+        assertEquals(2, fakeLookup.searchCalls.size)
+        assertEquals(LookupQuery("bury a friend", "Billie Eilish", 193_000L) to 5, fakeLookup.searchCalls[0])
+        assertEquals(LookupQuery("bury a friend", null, 193_000L) to 25, fakeLookup.searchCalls[1])
+        val state = vm.uiState.value
+        assertEquals(SearchState.Success, state.searchState)
+        assertEquals("rec-real", state.candidates[0].recordingId)
+    }
+
+    @Test
+    fun search_strictFindsResults_noFallback() = runBlocking {
+        val original = Candidate("rec-real", "bury a friend", "Billie Eilish", null, null, 193_000L, 100, emptyList())
+        val fakeLookup = FakeSongInfoLookup(
+            searchResult = listOf(original),
+            fallbackResult = emptyList(),
+        )
+        val vm = createViewModel(song = buryAFriendSong, lookup = fakeLookup)
+
+        vm.search()
+
+        assertEquals(1, fakeLookup.searchCalls.size)
+        assertEquals("Billie Eilish", fakeLookup.searchCalls[0].first.artist)
+        assertEquals(SearchState.Success, vm.uiState.value.searchState)
+    }
+
+    @Test
+    fun search_bothEmpty_reportsBothSearchesTried() = runBlocking {
+        val fakeLookup = FakeSongInfoLookup(searchResult = emptyList())
+        val vm = createViewModel(song = buryAFriendSong, lookup = fakeLookup)
+
+        vm.search()
+
+        assertEquals(2, fakeLookup.searchCalls.size)
+        assertEquals(SearchState.Empty, vm.uiState.value.searchState)
+        assertTrue(vm.uiState.value.searchTriedArtist)
+    }
+
     @Test
     fun search_busyException_setsBusyError() = runBlocking {
         val fakeLookup = FakeSongInfoLookup(searchError = LookupBusyException())

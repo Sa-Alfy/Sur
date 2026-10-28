@@ -149,6 +149,43 @@ class QueryCleanerAndRankerTest {
         assertEquals(LookupQuery(title = "Title", artist = "Artist"), queries[0])
     }
 
+    // --- 9-3A-fix: "Artist - Title" tag title, misspelled channel artist ---
+
+    @Test
+    fun clean_buryAFriend_tagTitleSplitComesFirst() {
+        val queries = QueryCleaner.clean(
+            tagTitle = "Billie Eilish - bury a friend",
+            tagArtist = "Bille Eilish",
+            displayName = "Bille Eilish - Billie Eilish - bury a friend.m4a",
+        )
+        assertEquals(LookupQuery(title = "bury a friend", artist = "Billie Eilish"), queries[0])
+        assertTrue(queries.size <= 3)
+    }
+
+    @Test
+    fun clean_buryAFriend_displayNameDropsDuplicateChannel() {
+        val queries = QueryCleaner.clean(displayName = "Bille Eilish - Billie Eilish - bury a friend.m4a")
+        assertEquals(LookupQuery(title = "bury a friend", artist = "Billie Eilish"), queries[0])
+        assertEquals(LookupQuery(title = "Billie Eilish - bury a friend", artist = null), queries[2])
+    }
+
+    @Test
+    fun artistSimilarity_typoIsClose_unrelatedIsFar() {
+        assertTrue(artistSimilarity("Bille Eilish", "Billie Eilish") >= 0.8)
+        assertTrue(artistSimilarity("Bille Eilish", "Arijit Singh") < 0.5)
+        assertEquals(0.0, artistSimilarity(null, "Billie Eilish"), 0.0)
+        assertEquals(0.0, artistSimilarity("  ", "Billie Eilish"), 0.0)
+    }
+
+    @Test
+    fun ranking_wantedArtistBeatsHigherScore() {
+        val cover = Candidate("1", "bury a friend", "Some Cover Band", null, null, null, 100, emptyList())
+        val real = Candidate("2", "bury a friend", "Billie Eilish", null, null, null, 90, emptyList())
+
+        val ranked = CandidateRanker.rank(listOf(cover, real), null, wantedArtist = "Bille Eilish")
+        assertEquals(listOf(real, cover), ranked)
+    }
+
     // --- C.4 Duration note boundaries and ranking ---
 
     @Test
