@@ -17,6 +17,7 @@ import io.github.saalfy.sur.data.playlist.m3u.MediaStoreSongFiles
 import io.github.saalfy.sur.data.search.SEARCH_DEBOUNCE_MS
 import io.github.saalfy.sur.data.search.filterPlaylists
 import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ sealed interface ImportResult {
     data class Success(val name: String, val added: Int, val notFound: Int) : ImportResult
     data object NothingMatched : ImportResult
     data object FileTooLarge : ImportResult
+    data object Failed : ImportResult
 }
 
 class PlaylistsViewModel(
@@ -71,15 +73,20 @@ class PlaylistsViewModel(
     fun importFromUri(uri: Uri) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val maxBytes = 2 * 1024 * 1024
-                var exceeded = false
-                val bytes = try {
-                    contentResolver.openInputStream(uri)?.use { stream ->
+                try {
+                    val maxBytes = 2 * 1024 * 1024
+                    var exceeded = false
+                    val stream = contentResolver.openInputStream(uri)
+                    if (stream == null) {
+                        _importResult.value = ImportResult.Failed
+                        return@withContext
+                    }
+                    val bytes = stream.use { s ->
                         val buffer = ByteArrayOutputStream()
                         val chunk = ByteArray(8192)
                         var totalRead = 0
                         var read: Int
-                        while (stream.read(chunk).also { read = it } != -1) {
+                        while (s.read(chunk).also { read = it } != -1) {
                             totalRead += read
                             if (totalRead > maxBytes) {
                                 exceeded = true
@@ -89,68 +96,70 @@ class PlaylistsViewModel(
                         }
                         buffer.toByteArray()
                     }
-                } catch (e: Exception) {
-                    null
-                }
 
-                if (exceeded) {
-                    _importResult.value = ImportResult.FileTooLarge
-                    return@withContext
-                }
-                if (bytes == null) {
-                    _importResult.value = ImportResult.NothingMatched
-                    return@withContext
-                }
-
-                val text = bytes.toString(Charsets.UTF_8)
-                val displayName = try {
-                    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                            if (idx >= 0) cursor.getString(idx) else null
-                        } else null
+                    if (exceeded) {
+                        _importResult.value = ImportResult.FileTooLarge
+                        return@withContext
                     }
-                } catch (e: Exception) {
-                    null
-                }
-
-                val fallbackName = displayName?.substringBeforeLast('.')?.trim()?.ifEmpty { null }
-                    ?: uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.')?.trim()?.ifEmpty { null }
-                    ?: "Imported Playlist"
-
-                val parsed = M3uParser.parse(text, fallbackName)
-                if (parsed.entries.isEmpty()) {
-                    _importResult.value = ImportResult.NothingMatched
-                    return@withContext
-                }
-
-                val library = MediaStoreSongFiles.queryAll(contentResolver)
-                val matchResult = M3uMatcher.match(parsed.entries, library)
-                val matchedSongIds = matchResult.matched.filterNotNull().distinct()
-
-                if (matchedSongIds.isEmpty()) {
-                    _importResult.value = ImportResult.NothingMatched
-                    return@withContext
-                }
-
-                val existingPlaylists = repository.playlists.first()
-                val existingNames = existingPlaylists.map { it.playlist.name }.toSet()
-
-                var targetName = parsed.playlistName.trim().ifEmpty { fallbackName }
-                if (targetName in existingNames) {
-                    var counter = 2
-                    while ("$targetName ($counter)" in existingNames) {
-                        counter++
+                    if (bytes == null) {
+                        _importResult.value = ImportResult.Failed
+                        return@withContext
                     }
-                    targetName = "$targetName ($counter)"
+
+                    val text = bytes.toString(Charsets.UTF_8)
+                    val displayName = try {
+                        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                if (idx >= 0) cursor.getString(idx) else null
+                            } else null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+
+                    val fallbackName = displayName?.substringBeforeLast('.')?.trim()?.ifEmpty { null }
+                        ?: uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.')?.trim()?.ifEmpty { null }
+                        ?: "Imported Playlist"
+
+                    val parsed = M3uParser.parse(text, fallbackName)
+                    if (parsed.entries.isEmpty()) {
+                        _importResult.value = ImportResult.NothingMatched
+                        return@withContext
+                    }
+
+                    val library = MediaStoreSongFiles.queryAll(contentResolver)
+                    val matchResult = M3uMatcher.match(parsed.entries, library)
+                    val matchedSongIds = matchResult.matched.filterNotNull().distinct()
+
+                    if (matchedSongIds.isEmpty()) {
+                        _importResult.value = ImportResult.NothingMatched
+                        return@withContext
+                    }
+
+                    val existingPlaylists = repository.playlists.first()
+                    val existingNames = existingPlaylists.map { it.playlist.name }.toSet()
+
+                    var targetName = parsed.playlistName.trim().ifEmpty { fallbackName }
+                    if (targetName in existingNames) {
+                        var counter = 2
+                        while ("$targetName ($counter)" in existingNames) {
+                            counter++
+                        }
+                        targetName = "$targetName ($counter)"
+                    }
+
+                    val newId = repository.create(targetName)
+                    repository.addSongs(newId, matchedSongIds)
+
+                    val added = matchedSongIds.size
+                    val notFound = parsed.entries.size - added
+                    _importResult.value = ImportResult.Success(targetName, added, notFound)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    _importResult.value = ImportResult.Failed
                 }
-
-                val newId = repository.create(targetName)
-                repository.addSongs(newId, matchedSongIds)
-
-                val added = matchedSongIds.size
-                val notFound = parsed.entries.size - added
-                _importResult.value = ImportResult.Success(targetName, added, notFound)
             }
         }
     }

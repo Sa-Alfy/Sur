@@ -3,6 +3,7 @@ package io.github.saalfy.sur.data.playlist.m3u
 import android.content.ContentResolver
 import android.os.Build
 import android.provider.MediaStore
+import io.github.saalfy.sur.data.MIN_SONG_DURATION_MS
 import io.github.saalfy.sur.data.MediaStoreUris
 
 /**
@@ -83,7 +84,7 @@ object MediaStoreSongFiles {
             }
         }.toTypedArray()
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= $MIN_SONG_DURATION_MS"
         val result = mutableListOf<MatchableSong>()
 
         resolver.query(

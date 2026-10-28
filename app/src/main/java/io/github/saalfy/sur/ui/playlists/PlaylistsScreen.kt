@@ -117,6 +117,7 @@ fun PlaylistsScreen(
             )
             ImportResult.NothingMatched -> stringResource(R.string.import_m3u_nothing_matched)
             ImportResult.FileTooLarge -> stringResource(R.string.import_m3u_file_too_large)
+            ImportResult.Failed -> stringResource(R.string.import_m3u_failed)
         }
         AlertDialog(
             onDismissRequest = viewModel::clearImportResult,
