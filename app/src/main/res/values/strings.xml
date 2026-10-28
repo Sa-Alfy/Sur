@@ -130,5 +130,26 @@
     <string name="import_m3u_file_too_large">File is too large (over 2 MB). Not an M3U playlist?</string>
     <string name="import_m3u_failed">Couldn\'t read that file.</string>
     <string name="ok">OK</string>
+
+    <!-- Find info -->
+    <string name="find_info">Find info</string>
+    <string name="find_info_consent_title">Find info</string>
+    <string name="find_info_consent_message">Find info sends the song\'s title and artist text to musicbrainz.org to find matches, and downloads cover images from coverartarchive.org (served via archive.org). No audio files or personal data are sent. Matches are saved only on this phone.</string>
+    <string name="allow">Allow</string>
+    <string name="find_info_title">Title</string>
+    <string name="find_info_artist">Artist</string>
+    <string name="find_info_try_another_query">Try another query</string>
+    <string name="find_info_searching">MusicBrainz is searching…</string>
+    <string name="find_info_no_results">No results found.</string>
+    <string name="find_info_err_busy">MusicBrainz is busy, try again in a minute</string>
+    <string name="find_info_err_network">Couldn\'t reach the service</string>
+    <string name="find_info_err_http">MusicBrainz returned an error (%1$d).</string>
+    <string name="find_info_err_generic">Couldn\'t complete lookup.</string>
+    <string name="find_info_loading_cover">Finding cover art…</string>
+    <string name="find_info_no_cover">No cover found</string>
+    <string name="find_info_apply">Apply</string>
+    <string name="find_info_skip">Skip</string>
+    <string name="find_info_remove">Remove found info</string>
+    <string name="find_info_cover_preview">Cover preview</string>
 </resources>
 

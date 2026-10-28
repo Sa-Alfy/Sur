@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.saalfy.sur.R
+import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.data.MediaStoreUris
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.ui.artwork.Artwork
@@ -57,6 +60,7 @@ import io.github.saalfy.sur.ui.common.AddToPlaylistDialog
 import io.github.saalfy.sur.ui.common.CenteredMessage
 import io.github.saalfy.sur.ui.common.SearchableTopBar
 import io.github.saalfy.sur.ui.common.formatDuration
+import io.github.saalfy.sur.ui.info.FindInfoSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +72,7 @@ fun SongsScreen(
     viewModel: SongsViewModel = viewModel(factory = SongsViewModel.Factory),
 ) {
     val context = LocalContext.current
+    val preferences = remember { (context.applicationContext as SurApplication).container.preferences }
     // Resolved once here instead of per lazy item.
     val loader = rememberArtworkLoader()
     val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
@@ -80,6 +85,8 @@ fun SongsScreen(
     var selected by remember { mutableStateOf(emptySet<Long>()) }
     // Song ids waiting for a playlist choice; non-null shows the picker.
     var pendingAdd by remember { mutableStateOf<List<Long>?>(null) }
+    var songForConsent by remember { mutableStateOf<Song?>(null) }
+    var activeFindInfoSong by remember { mutableStateOf<Song?>(null) }
     val selecting = selected.isNotEmpty()
 
     BackHandler(enabled = selecting) { selected = emptySet() }
@@ -178,6 +185,13 @@ fun SongsScreen(
                             },
                             onLongClick = { selected = selected + song.id },
                             onAddToPlaylist = { pendingAdd = listOf(song.id) },
+                            onFindInfo = {
+                                if (preferences.findInfoConsent) {
+                                    activeFindInfoSong = song
+                                } else {
+                                    songForConsent = song
+                                }
+                            },
                         )
                     }
                 }
@@ -203,6 +217,38 @@ fun SongsScreen(
             onDismiss = { pendingAdd = null },
         )
     }
+
+    songForConsent?.let { song ->
+        AlertDialog(
+            onDismissRequest = { songForConsent = null },
+            title = { Text(stringResource(R.string.find_info_consent_title)) },
+            text = { Text(stringResource(R.string.find_info_consent_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        preferences.findInfoConsent = true
+                        val target = songForConsent
+                        songForConsent = null
+                        activeFindInfoSong = target
+                    },
+                ) {
+                    Text(stringResource(R.string.allow))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { songForConsent = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    activeFindInfoSong?.let { song ->
+        FindInfoSheet(
+            song = song,
+            onDismiss = { activeFindInfoSong = null },
+        )
+    }
 }
 
 @Composable
@@ -218,6 +264,7 @@ private fun SongRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onAddToPlaylist: () -> Unit,
+    onFindInfo: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
@@ -281,6 +328,10 @@ private fun SongRow(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.add_to_playlist)) },
                             onClick = { menuOpen = false; onAddToPlaylist() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.find_info)) },
+                            onClick = { menuOpen = false; onFindInfo() },
                         )
                     }
                 }
