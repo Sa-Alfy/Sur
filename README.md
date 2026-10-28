@@ -27,12 +27,12 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Material 3**: dynamic color on Android 12+, an accessible teal fallback palette on Android 8–11 with verified WCAG contrast, and it follows system light/dark.
 - **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, song metadata, foreground notification controls, and audio tagging.
 - **Playlists backup**: export playlists as M3U files and import them back — no extra permissions needed.
+- **Find info**: look up track metadata (title, artist, album) and cover art via MusicBrainz and Cover Art Archive for songs one at a time, preview and edit queries before applying, with matches saved locally.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
-- **Private**: no accounts, cloud, ads or analytics. Connects to the network only when downloading audio you request.
+- **Private**: no accounts, cloud, ads or analytics. Network is used only for downloads you start and for Find info lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).
 
 ## Roadmap
 
-- **Find info**: look up track metadata (title, artist, album) and cover art via MusicBrainz and Cover Art Archive for songs with missing info (the lookup engine is in, but there is no UI yet).
 - **Bitrate & format preferences**: options for audio quality and format in the downloader.
 - **Batch / playlist queueing**: queue multiple downloads sequentially.
 
@@ -43,7 +43,7 @@ Android 8.0 (API 26) or newer.
 Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
 - **Notifications** (Android 13+, optional): to show playback controls and download progress.
-- **Network access**: used exclusively to download audio streams you request.
+- **Network access**: used only for downloads you start and for Find info lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).
 
 Some phones (Oppo, Xiaomi, Vivo, Huawei…) stop background apps aggressively. If music cuts out, allow Sur to run without battery restrictions. Sur offers a shortcut on first launch.
 
