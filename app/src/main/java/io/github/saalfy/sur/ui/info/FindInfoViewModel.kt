@@ -94,12 +94,14 @@ class FindInfoViewModel(
     private var existingEntity: SongInfoEntity? = null
     private var searchJob: Job? = null
     private var coverJob: Job? = null
+    private val initJob: Job
+    private var autoSearchStarted = false
 
     init {
-        loadInitialData()
+        initJob = loadInitialData()
     }
 
-    private fun loadInitialData() {
+    private fun loadInitialData(): Job =
         viewModelScope.launch(ioDispatcher) {
             val displayName = try {
                 displayNameProvider(song.id)
@@ -132,13 +134,26 @@ class FindInfoViewModel(
             _uiState.update { current ->
                 current.copy(
                     titleInput = variants.firstOrNull()?.title ?: current.titleInput,
-                    artistInput = variants.firstOrNull()?.artist ?: current.artistInput,
+                    // First variant exactly, so the auto search does not mix in the tag artist
+                    artistInput = variants.firstOrNull()?.let { it.artist.orEmpty() } ?: current.artistInput,
                     variants = variants,
                     currentVariantIndex = 0,
                     resolvedKey = key,
                     hasExistingApplied = hasExistingApplied,
                 )
             }
+        }
+
+    /**
+     * Searches once with the cleaner's first variant. Called by the sheet, which the host only
+     * shows after consent; later calls do nothing.
+     */
+    fun startAutoSearch() {
+        if (autoSearchStarted) return
+        autoSearchStarted = true
+        viewModelScope.launch(ioDispatcher) {
+            initJob.join()
+            search()
         }
     }
 
