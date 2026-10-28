@@ -20,6 +20,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import io.github.saalfy.sur.R
+import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.downloader.AudioDownloader
 import io.github.saalfy.sur.downloader.DownloadError
 import io.github.saalfy.sur.downloader.DownloadException
@@ -33,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -199,6 +201,36 @@ class DownloadService : Service() {
                 val fileName = audioFileName(info.title, info.artist)
                 val saved = AudioFileSaver(this@DownloadService)
                     .save(remuxed, fileName, info.title, info.artist, null)
+
+                if (saved.songId > 0) {
+                    val container = (applicationContext as? SurApplication)?.container
+                    if (container != null) {
+                        try {
+                            var key: String? = null
+                            for (attempt in 0 until 5) {
+                                key = container.songKeyResolver.resolveKey(saved.songId)
+                                if (key != null) break
+                                delay(200)
+                            }
+                            if (key != null) {
+                                val coverFileName = if (coverJpeg != null) {
+                                    runCatching { container.coverStore.save(coverJpeg) }.getOrNull()
+                                } else null
+                                container.songInfoRepository.apply(
+                                    key = key,
+                                    title = info.title,
+                                    artist = info.artist,
+                                    album = null,
+                                    coverFile = coverFileName,
+                                    mbRecordingId = null,
+                                )
+                                container.artworkLoader.evict(saved.songId)
+                            }
+                        } catch (t: Throwable) {
+                            Log.w("SurDownload", "Failed to apply song info overlay for download", t)
+                        }
+                    }
+                }
 
                 DownloadManager.updateState(DownloadState.Done(saved.songId, info.title))
             } catch (e: CancellationException) {

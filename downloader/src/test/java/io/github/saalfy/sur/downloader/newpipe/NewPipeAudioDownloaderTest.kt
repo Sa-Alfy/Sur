@@ -98,4 +98,29 @@ class NewPipeAudioDownloaderTest {
             assertEquals(DownloadError.Failed, e.error)
         }
     }
+
+    @Test
+    fun isSupportedThumbnail_webpMagicAccepted() {
+        // RIFF (4 bytes) + size (4 bytes) + WEBP (4 bytes)
+        val webp = byteArrayOf(
+            'R'.code.toByte(), 'I'.code.toByte(), 'F'.code.toByte(), 'F'.code.toByte(),
+            0x20, 0x00, 0x00, 0x00,
+            'W'.code.toByte(), 'E'.code.toByte(), 'B'.code.toByte(), 'P'.code.toByte(),
+        )
+        assertTrue(NewPipeAudioDownloader.isSupportedThumbnail(webp))
+    }
+
+    @Test
+    fun isSupportedThumbnail_jpegAndPngAccepted() {
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte())
+        val png = byteArrayOf(0x89.toByte(), 0x50.toByte(), 0x4E.toByte(), 0x47.toByte())
+        assertTrue(NewPipeAudioDownloader.isSupportedThumbnail(jpeg))
+        assertTrue(NewPipeAudioDownloader.isSupportedThumbnail(png))
+    }
+
+    @Test
+    fun isSupportedThumbnail_invalidRejected() {
+        val garbage = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+        org.junit.Assert.assertFalse(NewPipeAudioDownloader.isSupportedThumbnail(garbage))
+    }
 }

@@ -151,5 +151,8 @@
     <string name="find_info_skip">Skip</string>
     <string name="find_info_remove">Remove found info</string>
     <string name="find_info_cover_preview">Cover preview</string>
+    <string name="find_info_match_count">%1$d matches found — tap to select</string>
+    <string name="find_info_cover_found">Cover art found</string>
+    <string name="find_info_cover_saved_locally">Will be saved to this phone</string>
 </resources>
 

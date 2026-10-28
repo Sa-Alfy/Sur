@@ -36,7 +36,7 @@ class AudioFileSaver(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 saveViaMediaStore(source, fileName, title, artist, album)
             } else {
-                saveLegacy(source, fileName)
+                saveLegacy(source, fileName, title, artist, album)
             }
         }
 
@@ -68,7 +68,13 @@ class AudioFileSaver(context: Context) {
         return SavedAudio(ContentUris.parseId(uri), uri, SaveMethod.MEDIASTORE_PENDING, "$relativePath/$fileName")
     }
 
-    private suspend fun saveLegacy(source: File, fileName: String): SavedAudio {
+    private suspend fun saveLegacy(
+        source: File,
+        fileName: String,
+        title: String,
+        artist: String?,
+        album: String?,
+    ): SavedAudio {
         @Suppress("DEPRECATION")
         val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), SUR_FOLDER)
         if (!dir.isDirectory && !dir.mkdirs()) throw IOException("Can't create ${dir.path}")
@@ -90,6 +96,14 @@ class AudioFileSaver(context: Context) {
 
         if (uri == null) {
             uri = queryAudioUri(file)
+        }
+        if (uri != null) {
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.TITLE, title)
+                artist?.let { put(MediaStore.Audio.Media.ARTIST, it) }
+                album?.let { put(MediaStore.Audio.Media.ALBUM, it) }
+            }
+            runCatching { resolver.update(uri, values, null, null) }
         }
         val songId = uri?.let { runCatching { ContentUris.parseId(it) }.getOrNull() } ?: -1L
         return SavedAudio(songId, uri ?: Uri.fromFile(file), SaveMethod.LEGACY_FILE_AND_SCAN, file.path)

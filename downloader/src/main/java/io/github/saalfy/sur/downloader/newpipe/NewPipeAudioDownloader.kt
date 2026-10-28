@@ -179,8 +179,8 @@ class NewPipeAudioDownloader(
                     Log.w(TAG_THUMB, "Thumbnail body too large: ${bytes.size} bytes")
                     return@withContext null
                 }
-                if (!isJpegOrPng(bytes)) {
-                    Log.w(TAG_THUMB, "Thumbnail is not JPEG or PNG")
+                if (!isSupportedThumbnail(bytes)) {
+                    Log.w(TAG_THUMB, "Thumbnail is not JPEG, PNG, or WebP")
                     return@withContext null
                 }
                 cropAndScaleToJpeg(bytes)
@@ -235,6 +235,17 @@ class NewPipeAudioDownloader(
             val b3 = bytes[3].toInt() and 0xFF
             return (b0 == 0xFF && b1 == 0xD8 && b2 == 0xFF) || // JPEG
                 (b0 == 0x89 && b1 == 0x50 && b2 == 0x4E && b3 == 0x47) // PNG
+        }
+
+        /** Returns true if bytes are JPEG, PNG, or WebP. */
+        internal fun isSupportedThumbnail(bytes: ByteArray): Boolean {
+            if (isJpegOrPng(bytes)) return true
+            if (bytes.size < 12) return false
+            val isRiff = bytes[0] == 'R'.code.toByte() && bytes[1] == 'I'.code.toByte() &&
+                bytes[2] == 'F'.code.toByte() && bytes[3] == 'F'.code.toByte()
+            val isWebp = bytes[8] == 'W'.code.toByte() && bytes[9] == 'E'.code.toByte() &&
+                bytes[10] == 'B'.code.toByte() && bytes[11] == 'P'.code.toByte()
+            return isRiff && isWebp
         }
 
         /**

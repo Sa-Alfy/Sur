@@ -5,21 +5,18 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -47,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,13 +82,16 @@ fun FindInfoSheet(
         },
         sheetState = sheetState,
         modifier = modifier,
-        contentWindowInsets = { WindowInsets.ime },
+        contentWindowInsets = { WindowInsets(0) },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp),
+                .padding(bottom = 8.dp)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .imePadding(),
         ) {
             Text(
                 text = stringResource(R.string.find_info),
@@ -101,47 +100,42 @@ fun FindInfoSheet(
                 modifier = Modifier.padding(bottom = 12.dp),
             )
 
-            // Query Input Form
+            // Query fields
+            OutlinedTextField(
+                value = uiState.titleInput,
+                onValueChange = viewModel::onTitleChanged,
+                label = { Text(stringResource(R.string.find_info_title)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = uiState.artistInput,
+                onValueChange = viewModel::onArtistChanged,
+                label = { Text(stringResource(R.string.find_info_artist)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // "Try another query" left, Search button right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = uiState.titleInput,
-                        onValueChange = viewModel::onTitleChanged,
-                        label = { Text(stringResource(R.string.find_info_title)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = uiState.artistInput,
-                        onValueChange = viewModel::onArtistChanged,
-                        label = { Text(stringResource(R.string.find_info_artist)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                if (uiState.variants.size > 1) {
+                    TextButton(onClick = viewModel::nextVariant) {
+                        Text(stringResource(R.string.find_info_try_another_query))
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
                 }
-
                 Button(
                     onClick = viewModel::search,
                     enabled = uiState.searchState !is SearchState.Searching && uiState.titleInput.isNotBlank(),
-                    modifier = Modifier.align(Alignment.CenterVertically),
                 ) {
                     Text(stringResource(R.string.search))
-                }
-            }
-
-            if (uiState.variants.size > 1) {
-                TextButton(
-                    onClick = viewModel::nextVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                ) {
-                    Text(stringResource(R.string.find_info_try_another_query))
                 }
             }
 
@@ -196,23 +190,18 @@ fun FindInfoSheet(
 
                 SearchState.Success -> {
                     Text(
-                        text = "${uiState.candidates.size} matches found (tap to select)",
+                        text = stringResource(R.string.find_info_match_count, uiState.candidates.size),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 240.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(uiState.candidates, key = { it.recordingId }) { candidate ->
-                            val isSelected = uiState.selectedCandidate?.recordingId == candidate.recordingId
+                    // Plain Column — no nested scroll conflict with the outer verticalScroll
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.candidates.forEach { candidate ->
                             CandidateItem(
                                 candidate = candidate,
                                 songDurationMs = song.durationMs,
-                                isSelected = isSelected,
+                                isSelected = uiState.selectedCandidate?.recordingId == candidate.recordingId,
                                 onClick = { viewModel.selectCandidate(candidate) },
                             )
                         }
@@ -273,7 +262,15 @@ fun FindInfoSheet(
                         uiState.coverState !is CoverState.Loading &&
                         !uiState.isApplying,
                 ) {
-                    Text(stringResource(R.string.find_info_apply))
+                    if (uiState.isApplying) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    } else {
+                        Text(stringResource(R.string.find_info_apply))
+                    }
                 }
             }
         }
@@ -415,12 +412,12 @@ private fun CoverPreviewSection(
                         )
                         Column {
                             Text(
-                                text = "Cover art found",
+                                text = stringResource(R.string.find_info_cover_found),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
-                                text = "Will be saved to local storage",
+                                text = stringResource(R.string.find_info_cover_saved_locally),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

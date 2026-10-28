@@ -82,4 +82,4 @@ Sur is free software, licensed under the [GNU General Public License v3.0](LICEN
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for details.
 
-Third-party libraries: AndroidX / Jetpack (Apache-2.0), [Reorderable](https://github.com/Calvin-LL/Reorderable) (Apache-2.0), [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) (GPL-3.0), and [OkHttp](https://github.com/square/okhttp) (Apache-2.0).
+Third-party libraries: AndroidX / Jetpack (Apache-2.0), [Reorderable](https://github.com/Calvin-LL/Reorderable) (Apache-2.0), [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) (GPL-3.0), [OkHttp](https://github.com/square/okhttp) (Apache-2.0), and [nanojson](https://github.com/mmastrac/nanojson) (Apache-2.0).
