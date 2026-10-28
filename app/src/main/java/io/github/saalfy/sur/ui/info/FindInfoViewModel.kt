@@ -78,6 +78,7 @@ class FindInfoViewModel(
     private val songKeyResolver: SongKeyResolver,
     private val displayNameProvider: suspend (Long) -> String?,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -271,7 +272,7 @@ class FindInfoViewModel(
                     mbRecordingId = candidate.recordingId,
                 )
 
-                withContext(Dispatchers.Main) {
+                withContext(mainDispatcher) {
                     onSuccess()
                 }
             } finally {
@@ -289,7 +290,7 @@ class FindInfoViewModel(
             } catch (_: Exception) {
                 // ignore
             }
-            withContext(Dispatchers.Main) {
+            withContext(mainDispatcher) {
                 onSuccess()
             }
         }
@@ -316,7 +317,7 @@ class FindInfoViewModel(
             } catch (_: Exception) {
                 // ignore
             }
-            withContext(Dispatchers.Main) {
+            withContext(mainDispatcher) {
                 onSuccess()
             }
         }

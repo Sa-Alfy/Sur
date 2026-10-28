@@ -57,4 +57,18 @@ class SongKeyResolverTest {
         assertEquals("Music/FolderB/song.mp3", key2)
         assertNotEquals(key1, key2)
     }
+
+    @Test
+    fun resolveKey_mapsSingleIdFromResolver() = kotlinx.coroutines.runBlocking {
+        val resolver = object : SongKeyResolver {
+            override suspend fun resolveKeys(): Map<Long, String> = mapOf(
+                42L to "Music/SongA.mp3",
+                99L to "Music/SongB.m4a",
+            )
+        }
+
+        assertEquals("Music/SongA.mp3", resolver.resolveKey(42L))
+        assertEquals("Music/SongB.m4a", resolver.resolveKey(99L))
+        org.junit.Assert.assertNull(resolver.resolveKey(100L))
+    }
 }
