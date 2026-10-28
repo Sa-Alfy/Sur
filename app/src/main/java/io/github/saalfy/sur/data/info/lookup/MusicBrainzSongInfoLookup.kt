@@ -17,10 +17,10 @@ class MusicBrainzSongInfoLookup(
 
     private val userAgent = "Sur/$versionName ( https://github.com/Sa-Alfy/Sur )"
 
-    override suspend fun search(query: LookupQuery): List<Candidate> {
+    override suspend fun search(query: LookupQuery, limit: Int): List<Candidate> {
         val luceneQuery = buildLuceneQuery(query.title, query.artist)
         val encodedQuery = URLEncoder.encode(luceneQuery, StandardCharsets.UTF_8.name())
-        val url = "https://musicbrainz.org/ws/2/recording?query=$encodedQuery&fmt=json&limit=5"
+        val url = "https://musicbrainz.org/ws/2/recording?query=$encodedQuery&fmt=json&limit=$limit"
 
         val request = Request.Builder()
             .url(url)

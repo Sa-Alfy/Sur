@@ -180,7 +180,11 @@ class FindInfoViewModel(
                 )
             }
             try {
-                val results = lookup.search(query)
+                // Strict title + artist first; a misspelled artist gives nothing, so retry title only
+                var results = lookup.search(query)
+                if (results.isEmpty() && artist != null) {
+                    results = lookup.search(query.copy(artist = null), limit = TITLE_ONLY_LIMIT)
+                }
                 val ranked = CandidateRanker.rank(results, song.durationMs)
                 _uiState.update {
                     if (ranked.isEmpty()) {
@@ -334,6 +338,8 @@ class FindInfoViewModel(
     }
 
     companion object {
+        private const val TITLE_ONLY_LIMIT = 25
+
         fun factory(song: Song, context: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")

@@ -332,9 +332,14 @@ class FindInfoViewModelTest {
         var searchResult: List<Candidate> = emptyList(),
         var searchError: Throwable? = null,
         var coverBytes: ByteArray? = null,
+        var fallbackResult: List<Candidate>? = null,
     ) : SongInfoLookup {
-        override suspend fun search(query: LookupQuery): List<Candidate> {
+        val searchCalls = mutableListOf<Pair<LookupQuery, Int>>()
+
+        override suspend fun search(query: LookupQuery, limit: Int): List<Candidate> {
+            searchCalls.add(query to limit)
             searchError?.let { throw it }
+            if (query.artist == null) fallbackResult?.let { return it }
             return searchResult
         }
 

@@ -18,6 +18,6 @@ data class Candidate(
 )
 
 interface SongInfoLookup {
-    suspend fun search(query: LookupQuery): List<Candidate>
+    suspend fun search(query: LookupQuery, limit: Int = 5): List<Candidate>
     suspend fun fetchCover(candidate: Candidate): ByteArray?
 }
