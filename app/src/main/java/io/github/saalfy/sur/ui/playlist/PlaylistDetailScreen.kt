@@ -76,10 +76,16 @@ fun PlaylistDetailScreen(
     // Export result dialog
     val result = exportResult
     if (result != null) {
-        val baseMsg = stringResource(R.string.export_m3u_done, result.songCount)
-        val weakMsg = if (result.weakCount > 0) {
-            "\n" + stringResource(R.string.export_m3u_weak, result.weakCount)
-        } else ""
+        val message = when (result) {
+            is ExportResult.Success -> {
+                val baseMsg = stringResource(R.string.export_m3u_done, result.songCount)
+                val weakMsg = if (result.weakCount > 0) {
+                    "\n" + stringResource(R.string.export_m3u_weak, result.weakCount)
+                } else ""
+                baseMsg + weakMsg
+            }
+            ExportResult.Failed -> stringResource(R.string.export_m3u_failed)
+        }
         AlertDialog(
             onDismissRequest = viewModel::clearExportResult,
             confirmButton = {
@@ -87,7 +93,7 @@ fun PlaylistDetailScreen(
                     Text(stringResource(R.string.ok))
                 }
             },
-            text = { Text(baseMsg + weakMsg) },
+            text = { Text(message) },
         )
     }
 

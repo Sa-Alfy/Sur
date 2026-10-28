@@ -123,6 +123,7 @@
     <string name="export_m3u">Export as M3U</string>
     <string name="export_m3u_done">Exported %1$d songs.</string>
     <string name="export_m3u_weak">%1$d songs have no file path and may not import back.</string>
+    <string name="export_m3u_failed">Couldn\'t save the playlist file.</string>
     <string name="import_playlist">Import playlist</string>
     <string name="import_m3u_success">Imported \u2018%1$s\u2019: %2$d added, %3$d not found in your library.</string>
     <string name="import_m3u_nothing_matched">No songs matched. Is this an M3U file for music on this device?</string>

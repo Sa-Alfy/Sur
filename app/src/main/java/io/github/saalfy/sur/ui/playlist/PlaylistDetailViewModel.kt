@@ -14,6 +14,7 @@ import io.github.saalfy.sur.data.playlist.PlaylistSong
 import io.github.saalfy.sur.data.playlist.m3u.M3uEntry
 import io.github.saalfy.sur.data.playlist.m3u.M3uWriter
 import io.github.saalfy.sur.data.playlist.m3u.MediaStoreSongFiles
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,8 +31,11 @@ sealed interface PlaylistDetailUiState {
     data class Loaded(val playlist: Playlist, val songs: List<PlaylistSong>) : PlaylistDetailUiState
 }
 
-/** Shown after a successful export, then cleared. null = no message. */
-data class ExportResult(val songCount: Int, val weakCount: Int)
+/** Shown after an export attempt, then cleared. null = no message. */
+sealed interface ExportResult {
+    data class Success(val songCount: Int, val weakCount: Int) : ExportResult
+    data object Failed : ExportResult
+}
 
 class PlaylistDetailViewModel(
     private val playlistId: Long,
@@ -56,25 +60,36 @@ class PlaylistDetailViewModel(
         val state = uiState.value as? PlaylistDetailUiState.Loaded ?: return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val songs = state.songs
-                val songIds = songs.map { it.song.id }.toSet()
-                val songFiles = MediaStoreSongFiles.query(contentResolver, songIds)
+                try {
+                    val songs = state.songs
+                    val songIds = songs.map { it.song.id }.toSet()
+                    val songFiles = MediaStoreSongFiles.query(contentResolver, songIds)
 
-                val entries = songs.map { ps ->
-                    val sf = songFiles[ps.song.id]
-                    M3uEntry(
-                        title = ps.song.title,
-                        artist = ps.song.artist,
-                        durationSec = (ps.song.durationMs / 1000).toInt(),
-                        path = sf?.relativePath ?: ps.song.title,
-                    )
-                }
+                    val entries = songs.map { ps ->
+                        val sf = songFiles[ps.song.id]
+                        M3uEntry(
+                            title = ps.song.title,
+                            artist = ps.song.artist,
+                            durationSec = (ps.song.durationMs / 1000).toInt(),
+                            path = sf?.relativePath ?: ps.song.title,
+                        )
+                    }
 
-                val writeResult = M3uWriter.write(state.playlist.name, entries)
-                contentResolver.openOutputStream(uri)?.use { out ->
-                    out.write(writeResult.text.toByteArray(Charsets.UTF_8))
+                    val writeResult = M3uWriter.write(state.playlist.name, entries)
+                    val stream = contentResolver.openOutputStream(uri)
+                    if (stream == null) {
+                        _exportResult.value = ExportResult.Failed
+                        return@withContext
+                    }
+                    stream.use { out ->
+                        out.write(writeResult.text.toByteArray(Charsets.UTF_8))
+                    }
+                    _exportResult.value = ExportResult.Success(songs.size, writeResult.weakCount)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    _exportResult.value = ExportResult.Failed
                 }
-                _exportResult.value = ExportResult(songs.size, writeResult.weakCount)
             }
         }
     }
