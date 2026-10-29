@@ -107,4 +107,53 @@ class M3uMatcherTest {
         assertEquals(emptyList<Long?>(), result.matched)
         assertEquals(0, result.notMatchedCount)
     }
+
+    @Test
+    fun splitArtistAndTitleMatchesArtistlessLibrarySong() {
+        // (a) Entry with split artist + title matches library song titled "Anuv Jain - ALAG AASMAN" with no artist
+        val library = listOf(song(42, "Anuv Jain - ALAG AASMAN", artist = null, durationSec = 200))
+        val entries = listOf(M3uEntry(title = "ALAG AASMAN", artist = "Anuv Jain", durationSec = 200, path = "Anuv Jain - ALAG AASMAN"))
+        val result = M3uMatcher.match(entries, library)
+        assertEquals(listOf(42L), result.matched)
+        assertEquals(0, result.notMatchedCount)
+    }
+
+    @Test
+    fun normalArtistAndTitleMatches() {
+        // (b) A normal artist + title still matches
+        val library = listOf(song(7, "ALAG AASMAN", artist = "Anuv Jain", durationSec = 200))
+        val entries = listOf(M3uEntry(title = "ALAG AASMAN", artist = "Anuv Jain", durationSec = 200, path = "Music/Sur/track.m4a"))
+        val result = M3uMatcher.match(entries, library)
+        assertEquals(listOf(7L), result.matched)
+        assertEquals(0, result.notMatchedCount)
+    }
+
+    @Test
+    fun roundTripArtistlessTitleWithDashFindsSongThroughMatcher() {
+        // (c) Writer then parser round trip for an artist-less title containing " - " finds the song through the matcher
+        val librarySong = song(
+            id = 99,
+            title = "Anuv Jain - ALAG AASMAN",
+            artist = null,
+            durationSec = 215,
+            relativePath = null,
+            displayName = null,
+        )
+        val library = listOf(librarySong)
+
+        val originalEntries = listOf(
+            M3uEntry(
+                title = "Anuv Jain - ALAG AASMAN",
+                artist = null,
+                durationSec = 215,
+                path = "Anuv Jain - ALAG AASMAN",
+            )
+        )
+        val written = M3uWriter.write("My Playlist", originalEntries)
+        val parsed = M3uParser.parse(written.text, "fallback")
+
+        val matchResult = M3uMatcher.match(parsed.entries, library)
+        assertEquals(listOf(99L), matchResult.matched)
+        assertEquals(0, matchResult.notMatchedCount)
+    }
 }
