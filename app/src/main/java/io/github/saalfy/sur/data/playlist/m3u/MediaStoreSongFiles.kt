@@ -5,16 +5,18 @@ import android.os.Build
 import android.provider.MediaStore
 import io.github.saalfy.sur.data.MIN_SONG_DURATION_MS
 import io.github.saalfy.sur.data.MediaStoreUris
+import io.github.saalfy.sur.data.info.relativeFromAbsolute
 
 /**
  * Reads relative paths and display names from MediaStore for a given set of song IDs.
  * Returns a map from song ID to [MatchableSong].
  *
- * RELATIVE_PATH is only available on API 29+. On API 26-28 only the display name is populated;
- * path-based matching falls back to filename-only or title/artist/duration.
+ * RELATIVE_PATH is only available on API 29+. On API 26-28 MediaStore.Audio.Media.DATA is converted
+ * via relativeFromAbsolute(); path-based matching falls back to filename-only or title/artist/duration.
  */
 object MediaStoreSongFiles {
 
+    @Suppress("DEPRECATION")
     fun query(resolver: ContentResolver, songIds: Set<Long>): Map<Long, MatchableSong> {
         if (songIds.isEmpty()) return emptyMap()
 
@@ -26,6 +28,8 @@ object MediaStoreSongFiles {
             add(MediaStore.Audio.Media.DISPLAY_NAME)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 add(MediaStore.Audio.Media.RELATIVE_PATH)
+            } else {
+                add(MediaStore.Audio.Media.DATA)
             }
         }.toTypedArray()
 
@@ -50,12 +54,20 @@ object MediaStoreSongFiles {
             val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
             } else -1
+            val dataCol = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+            } else -1
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 val displayName = cursor.getString(nameCol) ?: continue
-                val relDir = if (relPathCol >= 0) cursor.getString(relPathCol)?.trimEnd('/') else null
-                val relativePath = if (relDir != null) "$relDir/$displayName" else null
+                val relativePath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val relDir = if (relPathCol >= 0) cursor.getString(relPathCol)?.trimEnd('/') else null
+                    if (relDir != null) "$relDir/$displayName" else null
+                } else {
+                    val data = if (dataCol >= 0) cursor.getString(dataCol) else null
+                    data?.let { relativeFromAbsolute(it) }
+                }
 
                 result[id] = MatchableSong(
                     id = id,
@@ -72,6 +84,7 @@ object MediaStoreSongFiles {
     }
 
     /** Query ALL songs (for import matching). */
+    @Suppress("DEPRECATION")
     fun queryAll(resolver: ContentResolver): List<MatchableSong> {
         val projection = buildList {
             add(MediaStore.Audio.Media._ID)
@@ -81,6 +94,8 @@ object MediaStoreSongFiles {
             add(MediaStore.Audio.Media.DISPLAY_NAME)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 add(MediaStore.Audio.Media.RELATIVE_PATH)
+            } else {
+                add(MediaStore.Audio.Media.DATA)
             }
         }.toTypedArray()
 
@@ -102,12 +117,20 @@ object MediaStoreSongFiles {
             val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
             } else -1
+            val dataCol = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+            } else -1
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 val displayName = cursor.getString(nameCol) ?: continue
-                val relDir = if (relPathCol >= 0) cursor.getString(relPathCol)?.trimEnd('/') else null
-                val relativePath = if (relDir != null) "$relDir/$displayName" else null
+                val relativePath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val relDir = if (relPathCol >= 0) cursor.getString(relPathCol)?.trimEnd('/') else null
+                    if (relDir != null) "$relDir/$displayName" else null
+                } else {
+                    val data = if (dataCol >= 0) cursor.getString(dataCol) else null
+                    data?.let { relativeFromAbsolute(it) }
+                }
 
                 result += MatchableSong(
                     id = id,
