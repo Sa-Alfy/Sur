@@ -158,5 +158,6 @@
     <string name="find_info_skip">Skip</string>
     <string name="find_info_remove">Remove found info</string>
     <string name="find_info_cover_preview">Cover preview</string>
+    <string name="find_info_no_confident">Couldn\'t find a confident match — tap a suggestion to use it</string>
 </resources>
 

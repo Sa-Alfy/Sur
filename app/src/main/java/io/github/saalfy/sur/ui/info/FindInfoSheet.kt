@@ -251,6 +251,100 @@ fun FindInfoSheet(
                         }
                     }
                 }
+
+                SearchState.NoConfident -> {
+                    val selected = uiState.selectedCandidate
+                    if (selected != null) {
+                        // User tapped a suggestion — show the match card + apply buttons
+                        MatchCard(
+                            candidate = selected,
+                            coverState = uiState.coverState,
+                            songDurationMs = song.durationMs,
+                        )
+                        Text(
+                            text = if (song.artist.isNullOrBlank()) {
+                                stringResource(R.string.find_info_now_title_only, song.title)
+                            } else {
+                                stringResource(R.string.find_info_now, song.title, song.artist)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                        )
+                        Button(
+                            onClick = { viewModel.apply(onDismiss) },
+                            enabled = uiState.coverState !is CoverState.Loading && !uiState.isApplying,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (uiState.isApplying) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            } else {
+                                Text(stringResource(R.string.find_info_use_match))
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { viewModel.applyCoverOnly(onDismiss) },
+                            enabled = uiState.coverState is CoverState.Success && !uiState.isApplying,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.find_info_cover_only))
+                        }
+                        if (uiState.coverState is CoverState.NotFound) {
+                            Text(
+                                text = stringResource(R.string.find_info_no_cover_for_match),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        TextButton(
+                            onClick = { showOthers = !showOthers },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        ) {
+                            Text(stringResource(R.string.find_info_not_this_one))
+                        }
+                        if (showOthers) {
+                            val others = uiState.candidates
+                                .filter { it.recordingId != selected.recordingId }
+                                .take(MAX_OTHER_MATCHES)
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                others.forEach { candidate ->
+                                    OtherMatchRow(
+                                        candidate = candidate,
+                                        onClick = { viewModel.selectCandidate(candidate) },
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            searchField()
+                        }
+                    } else {
+                        // No selection yet — show hint and tappable list
+                        Text(
+                            text = stringResource(R.string.find_info_no_confident),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            uiState.candidates.take(MAX_OTHER_MATCHES).forEach { candidate ->
+                                OtherMatchRow(
+                                    candidate = candidate,
+                                    onClick = { viewModel.selectCandidate(candidate) },
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        searchField()
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
