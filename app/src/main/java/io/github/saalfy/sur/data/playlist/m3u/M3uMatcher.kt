@@ -65,9 +65,10 @@ object M3uMatcher {
         val entryDur = entry.durationSec ?: -1
 
         val candidates = library.filter { song ->
-            normalize(song.title) == normTitle &&
-                normalize(song.artist) == normArtist &&
-                (entryDur < 0 || Math.abs(song.durationSec - entryDur) <= DURATION_TOLERANCE_SEC)
+            val durationMatches = entryDur < 0 || Math.abs(song.durationSec - entryDur) <= DURATION_TOLERANCE_SEC
+            val titleArtistMatches = (normalize(song.title) == normTitle && normalize(song.artist) == normArtist) ||
+                (song.artist.isNullOrBlank() && entry.artist != null && normalize("${entry.artist} ${entry.title}") == normalize(song.title))
+            durationMatches && titleArtistMatches
         }
 
         return if (candidates.size == 1) candidates[0].id else null
