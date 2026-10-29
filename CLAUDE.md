@@ -7,8 +7,14 @@
 - No accounts, cloud, ads, analytics. Downloader lives in the :downloader module; network only for user-started downloads and opt-in MusicBrainz Find info lookups.
 
 ## Working rules (token discipline)
-- Build with: ./gradlew assembleDebug -q --console=plain 2>&1 | tail -40
+- Build (Linux/macOS): `./gradlew assembleDebug -q --console=plain 2>&1 | tail -40`
+- Build (Windows PS): `./gradlew assembleDebug -q --console=plain 2>&1 | Select-Object -Last 40`
+- Tests: same but `testDebugUnitTest` instead of `assembleDebug`.
 - Never claim something works unless you ran it. Unverified = say "unverified".
 - Don't re-read files you just wrote. Don't paste whole files back to me.
 - Reply in 3-5 lines: what changed, build result, what's unverified. No summaries of the code.
 - Stop at the end of each phase and wait.
+
+## Recent phases
+- **10A** (playlist import/export): SDK<29 DATA fallback in MediaStoreSongFiles; artist-less title matching in M3uMatcher; scrollable not-found dialog; unit tests.
+- **10B** (Find cover & details): `textSimilarity` + `isConfident` in ArtistSimilarity/CandidateRanker; junk candidate filter (similarity < 0.5); auto-preselect + cover load only when confident; `NoConfident` state shows tappable list without preselected card.
