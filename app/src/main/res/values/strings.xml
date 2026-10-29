@@ -129,6 +129,9 @@
     <string name="import_m3u_nothing_matched">No songs matched. Is this an M3U file for music on this device?</string>
     <string name="import_m3u_file_too_large">File is too large (over 2 MB). Not an M3U playlist?</string>
     <string name="import_m3u_failed">Couldn\'t read that file.</string>
+    <string name="import_m3u_not_found_header">Not found in your library:</string>
+    <string name="import_m3u_more">+%1$d more</string>
+    <string name="import_m3u_not_found_more">+%1$d more</string>
     <string name="ok">OK</string>
 
     <!-- Find info -->

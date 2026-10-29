@@ -32,7 +32,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 sealed interface ImportResult {
-    data class Success(val name: String, val added: Int, val notFound: Int) : ImportResult
+    data class Success(
+        val name: String,
+        val added: Int,
+        val notFound: Int,
+        val notFoundTitles: List<String> = emptyList(),
+    ) : ImportResult
     data object NothingMatched : ImportResult
     data object FileTooLarge : ImportResult
     data object Failed : ImportResult
@@ -152,9 +157,22 @@ class PlaylistsViewModel(
                     val newId = repository.create(targetName)
                     repository.addSongs(newId, matchedSongIds)
 
+                    val notFoundTitles = parsed.entries.mapIndexedNotNull { index, entry ->
+                        if (matchResult.matched.getOrNull(index) == null) {
+                            when {
+                                !entry.artist.isNullOrBlank() && !entry.title.isNullOrBlank() -> "${entry.artist} - ${entry.title}"
+                                !entry.title.isNullOrBlank() -> entry.title
+                                !entry.artist.isNullOrBlank() -> entry.artist
+                                else -> entry.path.substringAfterLast('/').ifEmpty { entry.path }
+                            }
+                        } else {
+                            null
+                        }
+                    }
+
                     val added = matchedSongIds.size
-                    val notFound = parsed.entries.size - added
-                    _importResult.value = ImportResult.Success(targetName, added, notFound)
+                    val notFound = notFoundTitles.size
+                    _importResult.value = ImportResult.Success(targetName, added, notFound, notFoundTitles)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Throwable) {
