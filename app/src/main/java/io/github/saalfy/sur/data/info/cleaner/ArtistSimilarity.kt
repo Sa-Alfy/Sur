@@ -1,11 +1,13 @@
 package io.github.saalfy.sur.data.info.cleaner
 
 /**
- * Similarity of two names in 0.0..1.0: 1 - editDistance / maxLength, after lowercasing
+ * Similarity of two strings in 0.0..1.0: 1 - editDistance / maxLength, after lowercasing
  * and dropping everything that is not a letter or digit.
- * Returns 0.0 if either name is null or blank.
+ * Returns 0.0 if either string is null or blank.
+ *
+ * Generic version usable for titles, not just artist names.
  */
-fun artistSimilarity(a: String?, b: String?): Double {
+fun textSimilarity(a: String?, b: String?): Double {
     if (a.isNullOrBlank() || b.isNullOrBlank()) return 0.0
     val x = normalizeName(a)
     val y = normalizeName(b)
@@ -13,6 +15,12 @@ fun artistSimilarity(a: String?, b: String?): Double {
     val maxLen = maxOf(x.length, y.length)
     return 1.0 - editDistance(x, y).toDouble() / maxLen
 }
+
+/**
+ * Similarity of two artist names in 0.0..1.0.
+ * Returns 0.0 if either name is null or blank.
+ */
+fun artistSimilarity(a: String?, b: String?): Double = textSimilarity(a, b)
 
 private fun normalizeName(s: String): String =
     s.lowercase().filter { it.isLetterOrDigit() }

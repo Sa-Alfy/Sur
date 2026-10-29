@@ -24,6 +24,31 @@ object CandidateRanker {
     }
 
     private const val ARTIST_MATCH_THRESHOLD = 0.8
+    private const val CONFIDENT_TITLE_THRESHOLD = 0.85
+    private const val CONFIDENT_ARTIST_THRESHOLD = 0.8
+    private const val CONFIDENT_DURATION_TOLERANCE_MS = 60_000L
+
+    /**
+     * Returns true only when the candidate is a confident match for [queryTitle]/[queryArtist]:
+     *  - textSimilarity(candidate.title, queryTitle) >= 0.85
+     *  - queryArtist is null/blank OR artistSimilarity(candidate.artist, queryArtist) >= 0.8
+     *  - candidate.durationMs or songDurationMs is null, OR abs difference <= 60 000 ms
+     */
+    fun isConfident(
+        candidate: Candidate,
+        queryTitle: String,
+        queryArtist: String?,
+        songDurationMs: Long?,
+    ): Boolean {
+        if (textSimilarity(candidate.title, queryTitle) < CONFIDENT_TITLE_THRESHOLD) return false
+        if (!queryArtist.isNullOrBlank() &&
+            artistSimilarity(candidate.artist, queryArtist) < CONFIDENT_ARTIST_THRESHOLD
+        ) return false
+        if (candidate.durationMs != null && songDurationMs != null &&
+            abs(candidate.durationMs - songDurationMs) > CONFIDENT_DURATION_TOLERANCE_MS
+        ) return false
+        return true
+    }
 
     /**
      * Orders candidates whose artist is close to [wantedArtist] first, then by MusicBrainz

@@ -14,6 +14,7 @@ import io.github.saalfy.sur.data.info.SongInfoStatus
 import io.github.saalfy.sur.data.info.SongKeyResolver
 import io.github.saalfy.sur.data.info.cleaner.CandidateRanker
 import io.github.saalfy.sur.data.info.cleaner.QueryCleaner
+import io.github.saalfy.sur.data.info.cleaner.textSimilarity
 import io.github.saalfy.sur.data.info.lookup.Candidate
 import io.github.saalfy.sur.data.info.lookup.LookupBusyException
 import io.github.saalfy.sur.data.info.lookup.LookupHttpException
@@ -37,6 +38,8 @@ sealed interface SearchState {
     data object Searching : SearchState
     data object Empty : SearchState
     data object Success : SearchState
+    /** Results found but none is confident enough to preselect; candidates are available to tap. */
+    data object NoConfident : SearchState
     sealed interface Error : SearchState {
         data object Busy : Error
         data class Http(val code: Int) : Error
@@ -217,15 +220,22 @@ class FindInfoViewModel(
                     results = lookup.search(query.copy(artist = null), limit = TITLE_ONLY_LIMIT)
                 }
                 val ranked = CandidateRanker.rank(results, song.durationMs, wantedArtist = artist)
+                // Filter junk: drop candidates whose title similarity to the query title is < 0.5
+                val filtered = ranked.filter { textSimilarity(it.title, query.title) >= LOW_SIMILARITY_CUTOFF }
                 _uiState.update {
-                    if (ranked.isEmpty()) {
+                    if (filtered.isEmpty()) {
                         it.copy(searchState = SearchState.Empty, searchTriedArtist = artist != null)
                     } else {
-                        it.copy(searchState = SearchState.Success, candidates = ranked)
+                        it.copy(searchState = SearchState.Success, candidates = filtered)
                     }
                 }
-                // Preselect the best match so its cover loads without a tap
-                ranked.firstOrNull()?.let { selectCandidate(it) }
+                // Preselect the best match and auto-load its cover ONLY when confident
+                val best = filtered.firstOrNull()
+                if (best != null && CandidateRanker.isConfident(best, query.title, artist, song.durationMs)) {
+                    selectCandidate(best)
+                } else if (filtered.isNotEmpty()) {
+                    _uiState.update { it.copy(searchState = SearchState.NoConfident) }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: LookupBusyException) {
@@ -381,6 +391,7 @@ class FindInfoViewModel(
 
     companion object {
         private const val TITLE_ONLY_LIMIT = 25
+        private const val LOW_SIMILARITY_CUTOFF = 0.5
 
         /**
          * Parses the "Search yourself" text: "artist - song name" splits on the first " - ",
