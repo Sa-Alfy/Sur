@@ -37,6 +37,66 @@ object Mp4TagWriter {
         return writeImpl(file, title, artist, album, null)
     }
 
+    fun applyInfo(
+        file: File,
+        title: String,
+        artist: String?,
+        album: String?,
+        coverJpeg: ByteArray?,
+    ): TagPlacement {
+        RandomAccessFile(file, "rw").use { raf ->
+            val boxes = readTopLevelBoxes(raf)
+            val moovIndex = boxes.indexOfFirst { it.type == "moov" }
+            if (moovIndex < 0) throw TagWriteException("No moov box")
+            val moov = boxes[moovIndex]
+            if (moov.headerSize != HEADER) throw TagWriteException("64-bit moov size not supported")
+            val moovBytes = ByteArray(moov.size.toInt())
+            raf.seek(moov.offset)
+            raf.readFully(moovBytes)
+
+            val ilst = findIlst(moovBytes)
+            val oldItems = ilst?.let { children(moovBytes, it.start + HEADER, it.end) }
+                ?: emptyList()
+            val hasBackup = oldItems.any { isOriginalBackup(moovBytes, it) }
+            val newItems = buildUpdatedItems(moovBytes, oldItems, title, artist, album, coverJpeg, hasBackup)
+            val newMoov = replaceIlst(moovBytes, newItems)
+            val placement = placementFor(boxes, moovIndex, moov, newMoov)
+            writePlaced(raf, moov, newMoov, boxes.getOrNull(moovIndex + 1), placement)
+            return placement
+        }
+    }
+
+    fun hasOriginalBackup(file: File): Boolean {
+        RandomAccessFile(file, "r").use { raf ->
+            val moov = readTopLevelBoxes(raf).firstOrNull { it.type == "moov" } ?: return false
+            val bytes = ByteArray(moov.size.toInt())
+            raf.seek(moov.offset)
+            raf.readFully(bytes)
+            val ilst = findIlst(bytes) ?: return false
+            return children(bytes, ilst.start + HEADER, ilst.end).any { isOriginalBackup(bytes, it) }
+        }
+    }
+
+    fun restoreOriginal(file: File): Boolean {
+        RandomAccessFile(file, "rw").use { raf ->
+            val boxes = readTopLevelBoxes(raf)
+            val moovIndex = boxes.indexOfFirst { it.type == "moov" }
+            if (moovIndex < 0) return false
+            val moov = boxes[moovIndex]
+            val moovBytes = ByteArray(moov.size.toInt())
+            raf.seek(moov.offset)
+            raf.readFully(moovBytes)
+            val ilst = findIlst(moovBytes) ?: return false
+            val items = children(moovBytes, ilst.start + HEADER, ilst.end)
+            val backup = items.firstOrNull { isOriginalBackup(moovBytes, it) } ?: return false
+            val restored = restoreItems(moovBytes, items, backup)
+            val newMoov = replaceIlst(moovBytes, restored)
+            val placement = placementFor(boxes, moovIndex, moov, newMoov)
+            writePlaced(raf, moov, newMoov, boxes.getOrNull(moovIndex + 1), placement)
+            return true
+        }
+    }
+
     private fun writeImpl(file: File, title: String, artist: String?, album: String?, coverJpeg: ByteArray?): TagPlacement {
         RandomAccessFile(file, "rw").use { raf ->
             val boxes = readTopLevelBoxes(raf)
@@ -82,7 +142,7 @@ object Mp4TagWriter {
             val meta = children(bytes, udta.start + HEADER, udta.end).firstOrNull { it.type == "meta" } ?: return emptyMap()
             val ilst = children(bytes, meta.start + HEADER + 4, meta.end).firstOrNull { it.type == "ilst" } ?: return emptyMap()
             return children(bytes, ilst.start + HEADER, ilst.end).mapNotNull { item ->
-                if (item.type == "covr") return@mapNotNull null
+                if (item.type == "covr" || item.type == "----") return@mapNotNull null
                 val data = children(bytes, item.start + HEADER, item.end).firstOrNull { it.type == "data" }
                     ?: return@mapNotNull null
                 val valueStart = data.start + HEADER + 8
@@ -112,6 +172,170 @@ object Mp4TagWriter {
     }
 
     // --- building ---
+
+    private val managedTypes = setOf("©nam", "©ART", "©alb", "covr")
+
+    private fun buildUpdatedItems(
+        bytes: ByteArray,
+        oldItems: List<Child>,
+        title: String,
+        artist: String?,
+        album: String?,
+        coverJpeg: ByteArray?,
+        hasBackup: Boolean,
+    ): List<ByteArray> {
+        val result = mutableListOf<ByteArray>()
+        var titleAdded = false
+        var artistAdded = false
+        var albumAdded = false
+        var coverAdded = false
+        oldItems.forEach { item ->
+            when (item.type) {
+                "©nam" -> if (!titleAdded) {
+                    result += textItem("©nam", title)
+                    titleAdded = true
+                }
+                "©ART" -> if (artist == null) {
+                    result += bytes.copyOfRange(item.start, item.end)
+                } else if (!artistAdded) {
+                    result += textItem("©ART", artist)
+                    artistAdded = true
+                }
+                "©alb" -> if (album == null) {
+                    result += bytes.copyOfRange(item.start, item.end)
+                } else if (!albumAdded) {
+                    result += textItem("©alb", album)
+                    albumAdded = true
+                }
+                "covr" -> if (coverJpeg == null) {
+                    result += bytes.copyOfRange(item.start, item.end)
+                } else if (!coverAdded) {
+                    result += coverItem(coverJpeg)
+                    coverAdded = true
+                }
+                else -> result += bytes.copyOfRange(item.start, item.end)
+            }
+        }
+        if (!titleAdded) result += textItem("©nam", title)
+        if (artist != null && !artistAdded) result += textItem("©ART", artist)
+        if (album != null && !albumAdded) result += textItem("©alb", album)
+        if (coverJpeg != null && !coverAdded) result += coverItem(coverJpeg)
+        if (!hasBackup) {
+            val original = ByteArrayOutputStream().apply {
+                oldItems.filter { it.type in managedTypes }
+                    .forEach { write(bytes, it.start, it.end - it.start) }
+            }.toByteArray()
+            result += originalBackup(original)
+        }
+        return result
+    }
+
+    private fun originalBackup(rawItems: ByteArray): ByteArray = box(
+        "----",
+        fullBox("mean", "com.sur".toByteArray()) +
+            fullBox("name", "original".toByteArray()) +
+            box("data", int(0) + rawItems),
+    )
+
+    private fun restoreItems(bytes: ByteArray, items: List<Child>, backup: Child): List<ByteArray> {
+        val backupData = children(bytes, backup.start + HEADER, backup.end)
+            .firstOrNull { it.type == "data" } ?: throw TagWriteException("Invalid original backup")
+        val rawStart = backupData.start + HEADER + 4
+        val original = children(bytes, rawStart, backupData.end)
+            .map { bytes.copyOfRange(it.start, it.end) }
+        val result = mutableListOf<ByteArray>()
+        var restored = false
+        items.forEach { item ->
+            if (item === backup) {
+                if (!restored) {
+                    result += original
+                    restored = true
+                }
+            } else if (item.type !in managedTypes) {
+                result += bytes.copyOfRange(item.start, item.end)
+            }
+        }
+        return result
+    }
+
+    private fun isOriginalBackup(bytes: ByteArray, item: Child): Boolean {
+        if (item.type != "----") return false
+        val children = children(bytes, item.start + HEADER, item.end)
+        fun text(type: String): String? {
+            val child = children.firstOrNull { it.type == type } ?: return null
+            return String(bytes, child.start + HEADER + 4, child.end - child.start - HEADER - 4, Charsets.UTF_8)
+        }
+        return text("mean") == "com.sur" && text("name") == "original" && children.any { it.type == "data" }
+    }
+
+    private fun findIlst(moov: ByteArray): Child? {
+        val udta = children(moov, HEADER, moov.size).firstOrNull { it.type == "udta" } ?: return null
+        val meta = children(moov, udta.start + HEADER, udta.end).firstOrNull { it.type == "meta" } ?: return null
+        return children(moov, meta.start + HEADER + 4, meta.end).firstOrNull { it.type == "ilst" }
+    }
+
+    private fun replaceIlst(moov: ByteArray, items: List<ByteArray>): ByteArray {
+        val newIlst = box("ilst", items.fold(ByteArrayOutputStream()) { out, item -> out.apply { write(item) } }.toByteArray())
+        val udta = children(moov, HEADER, moov.size).firstOrNull { it.type == "udta" }
+        if (udta == null) return withTags(moov, fullBox("meta", buildMetaChildren(newIlst)))
+        val udtaBytes = moov.copyOfRange(udta.start, udta.end)
+        val udtaChildren = children(udtaBytes, HEADER, udtaBytes.size)
+        val meta = udtaChildren.firstOrNull { it.type == "meta" }
+        val newUdta = if (meta == null) {
+            appendChild(udtaBytes, fullBox("meta", buildMetaChildren(newIlst)))
+        } else {
+            val metaBytes = udtaBytes.copyOfRange(meta.start, meta.end)
+            val metaChildren = children(metaBytes, HEADER + 4, metaBytes.size)
+            val ilst = metaChildren.firstOrNull { it.type == "ilst" }
+            val newMeta = if (ilst != null) {
+                replaceChild(metaBytes, ilst, newIlst)
+            } else {
+                appendChild(metaBytes, newIlst)
+            }
+            replaceChild(udtaBytes, meta, newMeta)
+        }
+        return replaceChild(moov, udta, newUdta)
+    }
+
+    private fun buildMetaChildren(ilst: ByteArray): ByteArray = buildMeta("", null, null).let {
+        val hdlr = children(it, HEADER + 4, it.size).first { it.type == "hdlr" }
+        it.copyOfRange(HEADER + 4, hdlr.end) + ilst
+    }
+
+    private fun appendChild(parent: ByteArray, child: ByteArray): ByteArray =
+        boxHeader(parent.size + child.size, String(parent, 4, 4, Charsets.ISO_8859_1)) +
+            parent.copyOfRange(HEADER, parent.size) + child
+
+    private fun replaceChild(parent: ByteArray, child: Child, replacement: ByteArray): ByteArray =
+        boxHeader(parent.size - (child.end - child.start) + replacement.size, String(parent, 4, 4, Charsets.ISO_8859_1)) +
+            parent.copyOfRange(HEADER, child.start) + replacement + parent.copyOfRange(child.end, parent.size)
+
+    private fun placementFor(boxes: List<TopBox>, moovIndex: Int, moov: TopBox, newMoov: ByteArray): TagPlacement {
+        val growth = (newMoov.size - moov.size).toLong()
+        val next = boxes.getOrNull(moovIndex + 1)
+        return when {
+            next == null -> TagPlacement.MOOV_AT_END
+            next.type == "free" && (next.size == growth || next.size - growth >= HEADER) -> TagPlacement.MOOV_INTO_FREE_BOX
+            else -> throw TagWriteException("No room after moov (next box: ${next.type})")
+        }
+    }
+
+    private fun writePlaced(
+        raf: RandomAccessFile,
+        moov: TopBox,
+        newMoov: ByteArray,
+        next: TopBox?,
+        placement: TagPlacement,
+    ) {
+        raf.seek(moov.offset)
+        raf.write(newMoov)
+        if (placement == TagPlacement.MOOV_AT_END) {
+            raf.setLength(moov.offset + newMoov.size)
+        } else {
+            val remaining = next!!.size - (newMoov.size - moov.size)
+            if (remaining > 0) raf.write(boxHeader(remaining.toInt(), "free"))
+        }
+    }
 
     private fun buildMeta(title: String, artist: String?, album: String?, coverJpeg: ByteArray? = null): ByteArray {
         val hdlr = fullBox(
