@@ -2,6 +2,9 @@ package io.github.saalfy.sur.downloader.mp4
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayOutputStream
@@ -142,6 +145,151 @@ class Mp4TagWriterTest {
         Mp4TagWriter.write(f, "Song", null, null)
         assertEquals(null, Mp4TagWriter.readCover(f))
     }
+
+    @Test
+    fun applyInfo_replacesManagedItems_keepsUnknownItemAndMdat() {
+        val oldCover = byteArrayOf(1, 2, 3)
+        val newCover = byteArrayOf(9, 8, 7, 6)
+        val unknown = box("trkn", box("data", int(0) + int(0) + byteArrayOf(4, 5, 6)))
+        val f = taggedFile(
+            textItem("©nam", "Old title"),
+            textItem("©ART", "Old artist"),
+            textItem("©alb", "Old album"),
+            coverItem(oldCover),
+            unknown,
+        )
+        val originalMdat = mdatBytes(f)
+        val originalUnknown = itemBytes(f, "trkn")
+
+        Mp4TagWriter.applyInfo(f, "New title", "New artist", "New album", newCover)
+
+        val tags = Mp4TagWriter.readTags(f)
+        assertEquals("New title", tags["©nam"])
+        assertEquals("New artist", tags["©ART"])
+        assertEquals("New album", tags["©alb"])
+        assertArrayEquals(newCover, Mp4TagWriter.readCover(f))
+        assertArrayEquals(originalUnknown, itemBytes(f, "trkn"))
+        assertArrayEquals(originalMdat, mdatBytes(f))
+    }
+
+    @Test
+    fun applyInfo_existingUdtaWithoutMeta_getsTagsInside() {
+        val f = file(ftyp, mdat, box("moov", mvhd + box("udta", box("©xyz", ByteArray(12)))))
+
+        Mp4TagWriter.applyInfo(f, "Song", "Artist", null, null)
+
+        assertEquals("Song", Mp4TagWriter.readTags(f)["©nam"])
+        assertEquals("Artist", Mp4TagWriter.readTags(f)["©ART"])
+    }
+
+    @Test
+    fun applyInfo_createsBackupOnce_andRestoreReturnsOriginalItems() {
+        val originalCover = byteArrayOf(11, 12, 13)
+        val f = taggedFile(
+            textItem("©nam", "Original title"),
+            textItem("©ART", "Original artist"),
+            textItem("©alb", "Original album"),
+            coverItem(originalCover),
+        )
+
+        Mp4TagWriter.applyInfo(f, "Changed one", "Changed artist", "Changed album", byteArrayOf(21, 22))
+        val backup = itemBytes(f, "----")
+        Mp4TagWriter.applyInfo(f, "Changed two", "Changed artist 2", "Changed album 2", byteArrayOf(31))
+
+        assertArrayEquals(backup, itemBytes(f, "----"))
+        assertTrue(Mp4TagWriter.hasOriginalBackup(f))
+        assertTrue(Mp4TagWriter.restoreOriginal(f))
+        assertEquals(
+            mapOf("©nam" to "Original title", "©ART" to "Original artist", "©alb" to "Original album"),
+            Mp4TagWriter.readTags(f),
+        )
+        assertArrayEquals(originalCover, Mp4TagWriter.readCover(f))
+        assertFalse(Mp4TagWriter.hasOriginalBackup(f))
+    }
+
+    @Test
+    fun applyInfo_onUntagedFile_restoreRemovesManagedItems() {
+        val f = file(ftyp, mdat, box("moov", mvhd))
+
+        Mp4TagWriter.applyInfo(f, "Added", "Artist", "Album", byteArrayOf(1, 2))
+        assertTrue(Mp4TagWriter.restoreOriginal(f))
+
+        assertTrue(Mp4TagWriter.readTags(f).isEmpty())
+        assertEquals(null, Mp4TagWriter.readCover(f))
+    }
+
+    @Test
+    fun restoreOriginal_withoutBackup_leavesBytesIdentical() {
+        val f = file(ftyp, mdat, box("moov", mvhd))
+        Mp4TagWriter.write(f, "Song", "Artist", null)
+        val before = f.readBytes()
+
+        assertFalse(Mp4TagWriter.restoreOriginal(f))
+        assertArrayEquals(before, f.readBytes())
+    }
+
+    @Test
+    fun applyInfo_usesEndAndFreePlacement_andRefusesNoRoomWithoutWriting() {
+        val atEnd = file(ftyp, mdat, box("moov", mvhd))
+        assertEquals(TagPlacement.MOOV_AT_END, Mp4TagWriter.applyInfo(atEnd, "Song", null, null, null))
+
+        val withFree = file(ftyp, box("moov", mvhd), box("free", ByteArray(1024)), mdat)
+        assertEquals(TagPlacement.MOOV_INTO_FREE_BOX, Mp4TagWriter.applyInfo(withFree, "Song", null, null, null))
+
+        val noRoom = file(ftyp, box("moov", mvhd), mdat)
+        val before = noRoom.readBytes()
+        try {
+            Mp4TagWriter.applyInfo(noRoom, "Song", null, null, null)
+            fail("Expected TagWriteException")
+        } catch (_: TagWriteException) {
+        }
+        assertArrayEquals(before, noRoom.readBytes())
+    }
+
+    @Test
+    fun readTags_ignoresOriginalBackupItem() {
+        val f = file(ftyp, mdat, box("moov", mvhd))
+        Mp4TagWriter.applyInfo(f, "Song", null, null, null)
+
+        assertFalse(Mp4TagWriter.readTags(f).containsKey("----"))
+    }
+
+    private fun taggedFile(vararg items: ByteArray): File {
+        val hdlr = box(
+            "hdlr",
+            int(0) + "mdir".toByteArray(Charsets.ISO_8859_1) +
+                "appl".toByteArray(Charsets.ISO_8859_1) + int(0) + int(0) + byteArrayOf(0),
+        )
+        val itemBytes = items.fold(ByteArrayOutputStream()) { out, item ->
+            out.apply { write(item, 0, item.size) }
+        }.toByteArray()
+        val meta = box("meta", int(0) + hdlr + box("ilst", itemBytes))
+        return file(ftyp, mdat, box("moov", mvhd + box("udta", meta)))
+    }
+
+    private fun textItem(type: String, value: String): ByteArray =
+        box(type, box("data", int(1) + int(0) + value.toByteArray(Charsets.UTF_8)))
+
+    private fun coverItem(bytes: ByteArray): ByteArray =
+        box("covr", box("data", int(13) + int(0) + bytes))
+
+    private fun itemBytes(f: File, type: String): ByteArray {
+        val bytes = f.readBytes()
+        val marker = type.toByteArray(Charsets.ISO_8859_1)
+        val typeAt = (0..bytes.size - marker.size).firstOrNull { offset ->
+            marker.indices.all { index -> bytes[offset + index] == marker[index] }
+        } ?: -1
+        check(typeAt >= 4) { "Missing item $type" }
+        val start = typeAt - 4
+        val size = readInt(bytes, start)
+        return bytes.copyOfRange(start, start + size)
+    }
+
+    private fun readInt(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xFF shl 24) or
+            (bytes[offset + 1].toInt() and 0xFF shl 16) or
+            (bytes[offset + 2].toInt() and 0xFF shl 8) or
+            (bytes[offset + 3].toInt() and 0xFF)
 }
 
 // --- Companion helper tests (pure, no android.graphics) ---
