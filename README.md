@@ -25,7 +25,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Now playing**: art-tinted background gradient and controls via Palette, smooth crossfading, seek bar, shuffle, repeat (off / all / one), tap-to-jump queue view, and a persistent mini player.
 - **Search**: songs by title, artist or album; playlists by name.
 - **Material 3**: dynamic color on Android 12+, an accessible teal fallback palette on Android 8–11 with verified WCAG contrast, and it follows system light/dark.
-- **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, song metadata, foreground notification controls, and audio tagging.
+- **Downloader**: save audio from a single YouTube link directly into your library (`Music/Sur`) via the Download tab or shared links, with live progress, song metadata, foreground notification controls, audio tagging, and re-editable MP4 tags with an original metadata backup.
 - **Playlists backup**: export playlists as M3U files and import them back with automatic matching (relative path, file name, or title and artist) and detailed summary dialogs — no extra permissions needed.
 - **Find cover & details**: look up track metadata (title, artist, album) and cover art via MusicBrainz and Cover Art Archive, from a song's ⋮ menu or the placeholder art on Now Playing. The search runs on its own and preselects the best match; use it, take only the cover, pick another match, or search yourself with "artist - title". Matches are saved locally.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.

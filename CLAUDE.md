@@ -19,3 +19,4 @@
 - **10A** (playlist import/export): SDK<29 DATA fallback in MediaStoreSongFiles; artist-less title matching in M3uMatcher; scrollable not-found dialog; unit tests.
 - **10B** (Find cover & details): `textSimilarity` + `isConfident` in ArtistSimilarity/CandidateRanker; junk candidate filter (similarity < 0.5); auto-preselect + cover load only when confident; `NoConfident` state shows tappable list without preselected card.
 - **11A**: Find info never deletes a cover without a replacement; Cover only keeps earlier text; Now Playing button no longer flashes; README storage permission; About scrolls.
+- **12A**: Downloader MP4 tags can be re-edited while preserving unknown items, with one-time original metadata backup and restore.
