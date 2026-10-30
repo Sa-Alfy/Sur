@@ -297,6 +297,20 @@ class FindInfoViewModelTest {
     }
 
     @Test
+    fun applyCoverOnly_withoutCover_doesNothing() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = null)
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        vm.startAutoSearch()
+
+        var done = false
+        vm.applyCoverOnly { done = true }
+
+        assertFalse(done)
+        assertNull(fakeRepo.get("Music/Sur/imagine.mp3"))
+    }
+
+    @Test
     fun parseFreeText_artistDashTitle_andTitleOnly() {
         val split = FindInfoViewModel.parseFreeText("billie eilish - bury a friend")!!
         assertEquals("bury a friend", split.title)
@@ -472,6 +486,42 @@ class FindInfoViewModelTest {
         assertEquals("saved_1.jpg", applied?.coverFile)
         assertEquals("rec-new", applied?.mbRecordingId)
         assertEquals(SongInfoStatus.APPLIED, applied?.status)
+    }
+
+    @Test
+    fun apply_whenRepositoryThrows_keepsOldCover_deletesNewCover_andShowsError() = runBlocking {
+        val oldCover = "old.jpg"
+        val fakeCoverStore = FakeCoverStore().apply { files[oldCover] = File("/fake/$oldCover") }
+        val fakeRepo = RecordingSongInfoRepository(
+            initial = SongInfoEntity(
+                key = "Music/Sur/imagine.mp3",
+                title = "Old Title",
+                artist = "Old Artist",
+                album = "Old Album",
+                coverFile = oldCover,
+                mbRecordingId = "old-rec",
+                status = SongInfoStatus.APPLIED,
+                updatedAt = 1000L,
+            ),
+            applyError = IOException("database failure"),
+        )
+        val vm = createViewModel(
+            song = sampleSong,
+            lookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(1)),
+            infoRepo = fakeRepo,
+            coverStore = fakeCoverStore,
+        )
+        vm.startAutoSearch()
+
+        var done = false
+        vm.apply { done = true }
+
+        assertFalse(done)
+        assertTrue(fakeRepo.applyCalled)
+        assertFalse(fakeCoverStore.deletedFiles.contains(oldCover))
+        assertTrue(fakeCoverStore.deletedFiles.contains("saved_0.jpg"))
+        assertEquals(SearchState.Error.Generic(null), vm.uiState.value.searchState)
+        assertFalse(vm.uiState.value.isApplying)
     }
 
     @Test
@@ -678,7 +728,10 @@ class FindInfoViewModelTest {
         }
     }
 
-    private class RecordingSongInfoRepository(initial: SongInfoEntity) : FakeSongInfoRepository(
+    private class RecordingSongInfoRepository(
+        initial: SongInfoEntity,
+        private val applyError: Throwable? = null,
+    ) : FakeSongInfoRepository(
         initial = mapOf(initial.key to initial),
     ) {
         var applyCalled = false
@@ -692,6 +745,7 @@ class FindInfoViewModelTest {
             mbRecordingId: String?,
         ) {
             applyCalled = true
+            applyError?.let { throw it }
             super.apply(key, title, artist, album, coverFile, mbRecordingId)
         }
     }
