@@ -187,13 +187,20 @@ fun Artwork(
     loader: ArtworkLoader = rememberArtworkLoader(),
     sizePx: Int = with(LocalDensity.current) { size.roundToPx() },
     placeholder: @Composable () -> Unit = { ArtworkPlaceholderIcon() },
+    loadingPlaceholder: @Composable () -> Unit = placeholder,
 ) {
-    val bitmap by produceState(
-        initialValue = songId?.let { loader.cached(it, sizePx) },
+    val artwork by produceState(
+        initialValue = ArtworkLoad(
+            bitmap = songId?.let { loader.cached(it, sizePx) },
+            finished = false,
+        ),
         songId,
         sizePx,
     ) {
-        value = songId?.let { loader.load(it, artworkUri, sizePx) }
+        value = ArtworkLoad(
+            bitmap = songId?.let { loader.load(it, artworkUri, sizePx) },
+            finished = true,
+        )
     }
 
     Box(
@@ -202,7 +209,7 @@ fun Artwork(
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
-        val image = bitmap
+        val image = artwork.bitmap
         if (image != null) {
             Image(
                 bitmap = image.asImageBitmap(),
@@ -211,10 +218,12 @@ fun Artwork(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            placeholder()
+            if (artwork.finished) placeholder() else loadingPlaceholder()
         }
     }
 }
+
+private data class ArtworkLoad(val bitmap: Bitmap?, val finished: Boolean)
 
 @Composable
 fun ArtworkPlaceholderIcon() {

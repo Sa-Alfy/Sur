@@ -203,6 +203,7 @@ private fun ArtPane(state: PlayerUiState, modifier: Modifier, onFindInfo: (Long)
                                 }
                             }
                         },
+                        loadingPlaceholder = { ArtworkPlaceholderIcon() },
                     )
                 }
             }
