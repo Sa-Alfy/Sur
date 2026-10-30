@@ -42,6 +42,7 @@ Android 8.0 (API 26) or newer.
 
 Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
+- **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked when you save a download.
 - **Notifications** (Android 13+, optional): to show playback controls and download progress.
 - **Network access**: used only for downloads you start and for Find cover & details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).
 
