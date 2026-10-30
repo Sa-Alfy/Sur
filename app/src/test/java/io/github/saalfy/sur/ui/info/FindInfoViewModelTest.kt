@@ -234,8 +234,21 @@ class FindInfoViewModelTest {
     }
 
     @Test
-    fun coverOnly_appliesNullTitleArtistAlbum_withCoverFile() = runBlocking {
+    fun coverOnly_keepsEarlierTitleArtistAlbum_withCoverFile() = runBlocking {
         val fakeRepo = FakeSongInfoRepository()
+        fakeRepo.put(
+            "Music/Sur/imagine.mp3",
+            SongInfoEntity(
+                key = "Music/Sur/imagine.mp3",
+                title = "Earlier Title",
+                artist = "Earlier Artist",
+                album = "Earlier Album",
+                coverFile = "old.jpg",
+                mbRecordingId = "old-rec",
+                status = SongInfoStatus.APPLIED,
+                updatedAt = 1000L,
+            )
+        )
         val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(9, 9))
         val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
         vm.startAutoSearch()
@@ -246,25 +259,41 @@ class FindInfoViewModelTest {
         assertTrue(done)
         val saved = fakeRepo.get("Music/Sur/imagine.mp3")
         assertNotNull(saved)
-        assertNull(saved!!.title)
-        assertNull(saved.artist)
-        assertNull(saved.album)
+        assertEquals("Earlier Title", saved!!.title)
+        assertEquals("Earlier Artist", saved.artist)
+        assertEquals("Earlier Album", saved.album)
         assertEquals("saved_0.jpg", saved.coverFile)
         assertEquals("rec-1", saved.mbRecordingId)
     }
 
     @Test
-    fun coverOnly_withoutCover_doesNothing() = runBlocking {
-        val fakeRepo = FakeSongInfoRepository()
+    fun coverlessCandidate_keepsOldCover_andDoesNotDelete() = runBlocking {
+        val oldCover = "old.jpg"
+        val fakeCoverStore = FakeCoverStore().apply { files[oldCover] = File("/fake/$oldCover") }
+        val fakeRepo = FakeSongInfoRepository(
+            initial = mapOf(
+                "Music/Sur/imagine.mp3" to SongInfoEntity(
+                    key = "Music/Sur/imagine.mp3",
+                    title = "Old Title",
+                    artist = "Old Artist",
+                    album = "Old Album",
+                    coverFile = oldCover,
+                    mbRecordingId = "old-rec",
+                    status = SongInfoStatus.APPLIED,
+                    updatedAt = 1000L,
+                )
+            )
+        )
         val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = null)
-        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo, coverStore = fakeCoverStore)
         vm.startAutoSearch()
 
         var done = false
-        vm.applyCoverOnly { done = true }
+        vm.apply { done = true }
 
-        assertFalse(done)
-        assertNull(fakeRepo.get("Music/Sur/imagine.mp3"))
+        assertTrue(done)
+        assertEquals(oldCover, fakeRepo.get("Music/Sur/imagine.mp3")?.coverFile)
+        assertTrue(fakeCoverStore.deletedFiles.isEmpty())
     }
 
     @Test
@@ -446,6 +475,40 @@ class FindInfoViewModelTest {
     }
 
     @Test
+    fun apply_whenCoverSaveFails_doesNotApplyOrDelete_andShowsError() = runBlocking {
+        val oldCover = "old.jpg"
+        val fakeCoverStore = FakeCoverStore(saveError = IOException("disk full")).apply {
+            files[oldCover] = File("/fake/$oldCover")
+        }
+        val fakeRepo = RecordingSongInfoRepository(
+            SongInfoEntity(
+                key = "Music/Sur/imagine.mp3",
+                title = "Old Title",
+                artist = "Old Artist",
+                album = "Old Album",
+                coverFile = oldCover,
+                mbRecordingId = "old-rec",
+                status = SongInfoStatus.APPLIED,
+                updatedAt = 1000L,
+            )
+        )
+        val vm = createViewModel(
+            song = sampleSong,
+            lookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(1)),
+            infoRepo = fakeRepo,
+            coverStore = fakeCoverStore,
+        )
+        vm.startAutoSearch()
+
+        vm.apply { error("apply should not complete") }
+
+        assertFalse(fakeRepo.applyCalled)
+        assertTrue(fakeCoverStore.deletedFiles.isEmpty())
+        assertEquals(SearchState.Error.CoverSaveFailed, vm.uiState.value.searchState)
+        assertFalse(vm.uiState.value.isApplying)
+    }
+
+    @Test
     fun skip_callsInfoRepoSkip() = runBlocking {
         val fakeRepo = FakeSongInfoRepository()
         val vm = createViewModel(song = sampleSong, infoRepo = fakeRepo)
@@ -539,16 +602,20 @@ class FindInfoViewModelTest {
         }
     }
 
-    private class FakeSongInfoRepository(
+    private open class FakeSongInfoRepository(
         initial: Map<String, SongInfoEntity> = emptyMap(),
     ) : SongInfoRepository {
         private val data = initial.toMutableMap()
+
+        fun put(key: String, entity: SongInfoEntity) {
+            data[key] = entity
+        }
 
         override suspend fun get(key: String): SongInfoEntity? = data[key]
 
         override fun observeAll(): Flow<List<SongInfoEntity>> = flowOf(data.values.toList())
 
-        override suspend fun apply(
+        override open suspend fun apply(
             key: String,
             title: String?,
             artist: String?,
@@ -588,12 +655,15 @@ class FindInfoViewModelTest {
         }
     }
 
-    private class FakeCoverStore : CoverStore {
+    private class FakeCoverStore(
+        private val saveError: Throwable? = null,
+    ) : CoverStore {
         val files = mutableMapOf<String, File>()
         val deletedFiles = mutableListOf<String>()
         private var counter = 0
 
         override fun save(bytes: ByteArray): String {
+            saveError?.let { throw it }
             val name = "saved_${counter++}.jpg"
             files[name] = File("/fake/$name")
             return name
@@ -605,6 +675,24 @@ class FindInfoViewModelTest {
             deletedFiles.add(name)
             files.remove(name)
             return true
+        }
+    }
+
+    private class RecordingSongInfoRepository(initial: SongInfoEntity) : FakeSongInfoRepository(
+        initial = mapOf(initial.key to initial),
+    ) {
+        var applyCalled = false
+
+        override suspend fun apply(
+            key: String,
+            title: String?,
+            artist: String?,
+            album: String?,
+            coverFile: String?,
+            mbRecordingId: String?,
+        ) {
+            applyCalled = true
+            super.apply(key, title, artist, album, coverFile, mbRecordingId)
         }
     }
 

@@ -45,6 +45,7 @@ sealed interface SearchState {
         data class Http(val code: Int) : Error
         data object Network : Error
         data class Generic(val message: String?) : Error
+        data object CoverSaveFailed : Error
     }
 }
 
@@ -305,13 +306,14 @@ class FindInfoViewModel(
                     try {
                         coverStore.save(coverBytes)
                     } catch (_: Exception) {
-                        null
+                        _uiState.update { it.copy(searchState = SearchState.Error.CoverSaveFailed) }
+                        return@launch
                     }
                 } else {
-                    null
+                    existing?.coverFile
                 }
 
-                if (!oldCoverFile.isNullOrBlank() && oldCoverFile != newCoverFile) {
+                if (coverBytes != null && !oldCoverFile.isNullOrBlank() && oldCoverFile != newCoverFile) {
                     try {
                         coverStore.delete(oldCoverFile)
                     } catch (_: Exception) {
@@ -321,9 +323,9 @@ class FindInfoViewModel(
 
                 infoRepository.apply(
                     key = key,
-                    title = if (coverOnly) null else candidate.title,
-                    artist = if (coverOnly) null else candidate.artist,
-                    album = if (coverOnly) null else candidate.releaseTitle,
+                    title = if (coverOnly) existing?.title else candidate.title,
+                    artist = if (coverOnly) existing?.artist else candidate.artist,
+                    album = if (coverOnly) existing?.album else candidate.releaseTitle,
                     coverFile = newCoverFile,
                     mbRecordingId = candidate.recordingId,
                 )

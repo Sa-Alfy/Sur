@@ -164,6 +164,7 @@ fun FindInfoSheet(
                         SearchState.Error.Network -> stringResource(R.string.find_info_err_network)
                         is SearchState.Error.Http -> stringResource(R.string.find_info_err_http, search.code)
                         is SearchState.Error.Generic -> search.message ?: stringResource(R.string.find_info_err_generic)
+                        SearchState.Error.CoverSaveFailed -> stringResource(R.string.find_info_err_cover_save)
                     }
                     Text(
                         text = message,
