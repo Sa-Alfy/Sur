@@ -280,7 +280,7 @@ class FindInfoViewModel(
     /** Applies title, artist, album and cover of the selected match. */
     fun apply(onSuccess: () -> Unit) = applySelected(coverOnly = false, onSuccess)
 
-    /** Applies only the cover; null title/artist/album keep the song's own tags. */
+    /** Applies only the cover; the earlier title, artist and album are kept. */
     fun applyCoverOnly(onSuccess: () -> Unit) {
         if (_uiState.value.coverState !is CoverState.Success) return
         applySelected(coverOnly = true, onSuccess)
@@ -313,6 +313,29 @@ class FindInfoViewModel(
                     existing?.coverFile
                 }
 
+                try {
+                    infoRepository.apply(
+                        key = key,
+                        title = if (coverOnly) existing?.title else candidate.title,
+                        artist = if (coverOnly) existing?.artist else candidate.artist,
+                        album = if (coverOnly) existing?.album else candidate.releaseTitle,
+                        coverFile = newCoverFile,
+                        mbRecordingId = candidate.recordingId,
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    if (coverBytes != null && !newCoverFile.isNullOrBlank()) {
+                        try {
+                            coverStore.delete(newCoverFile)
+                        } catch (_: Exception) {
+                            // ignore cleanup error
+                        }
+                    }
+                    _uiState.update { it.copy(searchState = SearchState.Error.Generic(null)) }
+                    return@launch
+                }
+
                 if (coverBytes != null && !oldCoverFile.isNullOrBlank() && oldCoverFile != newCoverFile) {
                     try {
                         coverStore.delete(oldCoverFile)
@@ -320,15 +343,6 @@ class FindInfoViewModel(
                         // ignore delete error
                     }
                 }
-
-                infoRepository.apply(
-                    key = key,
-                    title = if (coverOnly) existing?.title else candidate.title,
-                    artist = if (coverOnly) existing?.artist else candidate.artist,
-                    album = if (coverOnly) existing?.album else candidate.releaseTitle,
-                    coverFile = newCoverFile,
-                    mbRecordingId = candidate.recordingId,
-                )
 
                 withContext(mainDispatcher) {
                     onSuccess()
