@@ -150,10 +150,11 @@ class TagSpikeActivity : ComponentActivity() {
             val savedOriginal = requireNotNull(original) { "step a did not produce original state" }
             val originalDuration = readDuration(copy)
             val writtenCover = createCover()
+            val writtenPictures = listOf(PictureSummary(writtenCover, "image/jpeg", "Front Cover", "Front Cover"))
             val beforeSize = copy.length()
             val writeStart = System.nanoTime()
             step("b write") {
-                updateTags(copy, savedOriginal.properties, "SpikeTitle", "SpikeArtist", "SpikeAlbum", writtenCover)
+                updateTags(copy, savedOriginal.properties, "SpikeTitle", "SpikeArtist", "SpikeAlbum", writtenPictures)
                 val writeMs = (System.nanoTime() - writeStart) / 1_000_000
                 "${writeMs}ms size=$beforeSize->${copy.length()} coverBytes=${writtenCover.size}"
             }
@@ -163,9 +164,9 @@ class TagSpikeActivity : ComponentActivity() {
                 check(afterWrite.title == "SpikeTitle") { "title=${afterWrite.title}" }
                 check(afterWrite.artist == "SpikeArtist") { "artist=${afterWrite.artist}" }
                 check(afterWrite.album == "SpikeAlbum") { "album=${afterWrite.album}" }
-                check(afterWrite.cover?.contentEquals(writtenCover) == true) { "cover bytes differ" }
+                checkPicturesEqual(afterWrite.pictures, writtenPictures)
                 check(afterWrite.custom == "test") { "custom=${afterWrite.custom}" }
-                "values, cover bytes, and $FIELD equal"
+                "values, all picture bytes and metadata, and $FIELD equal"
             }
 
             step("d MediaMetadataRetriever") {
@@ -195,14 +196,12 @@ class TagSpikeActivity : ComponentActivity() {
             }
 
             step("e restore") {
-                updateTags(copy, savedOriginal.properties, savedOriginal.title, savedOriginal.artist, savedOriginal.album, savedOriginal.cover)
+                updateTags(copy, savedOriginal.properties, savedOriginal.title, savedOriginal.artist, savedOriginal.album, savedOriginal.pictures)
                 val restored = readState(copy)
                 check(restored.title == savedOriginal.title) { "title=${restored.title}" }
                 check(restored.artist == savedOriginal.artist) { "artist=${restored.artist}" }
                 check(restored.album == savedOriginal.album) { "album=${restored.album}" }
-                check(savedOriginal.cover?.let { restored.cover?.contentEquals(it) == true } ?: (restored.cover == null)) {
-                    "cover bytes differ after restore"
-                }
+                checkPicturesEqual(restored.pictures, savedOriginal.pictures)
                 check(restored.custom == null) { "$FIELD remains ${restored.custom}" }
                 "original text/cover restored and $FIELD removed"
             }
@@ -224,7 +223,7 @@ class TagSpikeActivity : ComponentActivity() {
         title: String?,
         artist: String?,
         album: String?,
-        cover: ByteArray?,
+        pictures: List<PictureSummary>,
     ) {
         val properties = HashMap<String, Array<String>>(originalProperties.size)
         originalProperties.forEach { (key, values) -> properties[key] = values.copyOf() }
@@ -233,10 +232,10 @@ class TagSpikeActivity : ComponentActivity() {
         setPropertyOrRemove(properties, "ALBUM", album)
         if (title == "SpikeTitle") properties[FIELD] = arrayOf("test") else properties.remove(FIELD)
         withFd(file) { fd -> check(TagLib.savePropertyMap(fd, properties)) { "savePropertyMap returned false" } }
-        val pictures = cover?.let {
-            arrayOf(Picture(it, "Front Cover", "Front Cover", "image/jpeg"))
-        } ?: emptyArray()
-        withFd(file) { fd -> check(TagLib.savePictures(fd, pictures)) { "savePictures returned false" } }
+        val tagPictures = pictures.map {
+            Picture(it.data, it.description, it.pictureType, it.mimeType)
+        }.toTypedArray()
+        withFd(file) { fd -> check(TagLib.savePictures(fd, tagPictures)) { "savePictures returned false" } }
     }
 
     private fun setPropertyOrRemove(properties: HashMap<String, Array<String>>, key: String, value: String?) {
@@ -249,10 +248,22 @@ class TagSpikeActivity : ComponentActivity() {
             title = metadata.propertyMap["TITLE"]?.firstOrNull(),
             artist = metadata.propertyMap["ARTIST"]?.firstOrNull(),
             album = metadata.propertyMap["ALBUM"]?.firstOrNull(),
-            cover = metadata.pictures.firstOrNull()?.data?.copyOf(),
+            pictures = metadata.pictures.map { picture ->
+                PictureSummary(picture.data.copyOf(), picture.mimeType, picture.pictureType, picture.description)
+            },
             custom = metadata.propertyMap[FIELD]?.firstOrNull(),
             properties = metadata.propertyMap.mapValues { (_, values) -> values.copyOf() },
         )
+    }
+
+    private fun checkPicturesEqual(actual: List<PictureSummary>, expected: List<PictureSummary>) {
+        check(actual.size == expected.size) { "picture count actual=${actual.size} expected=${expected.size}" }
+        actual.zip(expected).forEachIndexed { index, (actualPicture, expectedPicture) ->
+            check(actualPicture.data.contentEquals(expectedPicture.data)) { "picture[$index] data differs" }
+            check(actualPicture.mimeType == expectedPicture.mimeType) { "picture[$index] mime differs" }
+            check(actualPicture.pictureType == expectedPicture.pictureType) { "picture[$index] type differs" }
+            check(actualPicture.description == expectedPicture.description) { "picture[$index] description differs" }
+        }
     }
 
     private fun readAudioProperties(file: File): AudioProperties = withFd(file) { fd ->
@@ -303,7 +314,7 @@ class TagSpikeActivity : ComponentActivity() {
         val title: String?,
         val artist: String?,
         val album: String?,
-        val cover: ByteArray?,
+        val pictures: List<PictureSummary>,
         val custom: String?,
         val properties: Map<String, Array<String>>,
     )
