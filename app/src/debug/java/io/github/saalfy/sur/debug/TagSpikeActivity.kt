@@ -200,15 +200,19 @@ class TagSpikeActivity : ComponentActivity() {
     ) {
         val properties = HashMap<String, Array<String>>(originalProperties.size)
         originalProperties.forEach { (key, values) -> properties[key] = values.copyOf() }
-        properties["TITLE"] = arrayOf(title.orEmpty())
-        properties["ARTIST"] = arrayOf(artist.orEmpty())
-        properties["ALBUM"] = arrayOf(album.orEmpty())
+        setPropertyOrRemove(properties, "TITLE", title)
+        setPropertyOrRemove(properties, "ARTIST", artist)
+        setPropertyOrRemove(properties, "ALBUM", album)
         if (title == "SpikeTitle") properties[FIELD] = arrayOf("test") else properties.remove(FIELD)
         withFd(file) { fd -> check(TagLib.savePropertyMap(fd, properties)) { "savePropertyMap returned false" } }
         val pictures = cover?.let {
             arrayOf(Picture(it, "Front Cover", "Front Cover", "image/jpeg"))
         } ?: emptyArray()
         withFd(file) { fd -> check(TagLib.savePictures(fd, pictures)) { "savePictures returned false" } }
+    }
+
+    private fun setPropertyOrRemove(properties: HashMap<String, Array<String>>, key: String, value: String?) {
+        if (value == null) properties.remove(key) else properties[key] = arrayOf(value)
     }
 
     private fun readState(file: File): ReadState = withFd(file) { fd ->
