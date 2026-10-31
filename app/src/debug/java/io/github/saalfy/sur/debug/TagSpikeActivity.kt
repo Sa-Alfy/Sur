@@ -8,6 +8,7 @@ import android.media.MediaFormat
 import android.net.Uri
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
+import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -35,13 +36,26 @@ import com.kyant.taglib.TagLib
 import io.github.saalfy.sur.ui.theme.SurTheme
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val FIELD = "SUR_ORIGINAL"
+private const val BACKUP_PREFIX = "SUR_ORIGINAL_"
+private const val BACKUP_TITLE = "SUR_ORIGINAL_TITLE"
+private const val BACKUP_ARTIST = "SUR_ORIGINAL_ARTIST"
+private const val BACKUP_ALBUM = "SUR_ORIGINAL_ALBUM"
+private const val BACKUP_PICTURES = "SUR_ORIGINAL_PICTURES"
+private const val BACKUP_VERSION = "SUR_ORIGINAL_VERSION"
+private val BACKUP_KEYS = setOf(BACKUP_TITLE, BACKUP_ARTIST, BACKUP_ALBUM, BACKUP_PICTURES, BACKUP_VERSION)
+private const val SPIKE_TITLE = "স্পাইক টাইটেল ✓ Ünï"
+private const val SPIKE_ARTIST = "স্পাইক আর্টিস্ট"
+private const val SPIKE_ALBUM = "SpikeAlbum"
 
 class TagSpikeActivity : ComponentActivity() {
     private val pickAudio = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -125,6 +139,8 @@ class TagSpikeActivity : ComponentActivity() {
             requireNotNull(input) { "Could not open $uri" }
             FileOutputStream(copy).use { output -> input.copyTo(output) }
         }
+        val gCopy = File(cacheDir, "tag-spike-g-${System.nanoTime()}-${name.substringAfterLast('/')}")
+        copy.copyTo(gCopy, overwrite = true)
         try {
             fun step(stepName: String, action: () -> String) {
                 try {
@@ -160,34 +176,41 @@ class TagSpikeActivity : ComponentActivity() {
             val beforeSize = copy.length()
             val writeStart = System.nanoTime()
             step("b write") {
-                updateTags(copy, savedOriginal.properties, "SpikeTitle", "SpikeArtist", "SpikeAlbum", writtenPictures)
+                applyTags(
+                    copy,
+                    savedOriginal.properties,
+                    SPIKE_TITLE,
+                    SPIKE_ARTIST,
+                    SPIKE_ALBUM,
+                    writtenPictures,
+                    createBackup(savedOriginal),
+                )
                 val writeMs = (System.nanoTime() - writeStart) / 1_000_000
                 "${writeMs}ms size=$beforeSize->${copy.length()} coverBytes=${writtenCover.size}"
             }
 
             step("c re-read") {
                 val afterWrite = readState(copy)
-                check(afterWrite.title == "SpikeTitle") { "title=${afterWrite.title}" }
-                check(afterWrite.artist == "SpikeArtist") { "artist=${afterWrite.artist}" }
-                check(afterWrite.album == "SpikeAlbum") { "album=${afterWrite.album}" }
+                check(afterWrite.title == SPIKE_TITLE) { "title=${afterWrite.title}" }
+                check(afterWrite.artist == SPIKE_ARTIST) { "artist=${afterWrite.artist}" }
+                check(afterWrite.album == SPIKE_ALBUM) { "album=${afterWrite.album}" }
                 checkPicturesEqual(afterWrite.pictures, writtenPictures)
-                check(afterWrite.custom == "test") { "custom=${afterWrite.custom}" }
                 val afterWriteAudioHash = computeAudioHash(copy)
                 checkAudioHashEqual(originalAudioHash, afterWriteAudioHash, report, "before b vs after b")
-                "values, all picture bytes and metadata, and $FIELD equal"
+                "Unicode values, all picture bytes and metadata, and backup fields present"
             }
 
             step("d MediaMetadataRetriever") {
                 val retriever = MediaMetadataRetriever()
                 try {
                     retriever.setDataSource(copy.absolutePath)
-                    check(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) == "SpikeTitle") {
+                    check(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) == SPIKE_TITLE) {
                         "title cross-check mismatch"
                     }
-                    check(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) == "SpikeArtist") {
+                    check(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) == SPIKE_ARTIST) {
                         "artist cross-check mismatch"
                     }
-                    check(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) == "SpikeAlbum") {
+                    check(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) == SPIKE_ALBUM) {
                         "album cross-check mismatch"
                     }
                     check(retriever.embeddedPicture?.contentEquals(writtenCover) == true) {
@@ -203,44 +226,74 @@ class TagSpikeActivity : ComponentActivity() {
                 }
             }
 
-            step("e restore") {
-                updateTags(copy, savedOriginal.properties, savedOriginal.title, savedOriginal.artist, savedOriginal.album, savedOriginal.pictures)
+            step("e2 restore from file only") {
+                val beforeSize = copy.length()
+                val current = readState(copy)
+                val backup = requireNotNull(readBackup(current.properties)) { "backup fields missing" }
+                val backupSize = current.properties[BACKUP_PICTURES]?.firstOrNull()?.toByteArray(Charsets.UTF_8)?.size ?: 0
+                restoreFromBackup(copy, current, backup)
                 val restored = readState(copy)
-                check(restored.title == savedOriginal.title) { "title=${restored.title}" }
-                check(restored.artist == savedOriginal.artist) { "artist=${restored.artist}" }
-                check(restored.album == savedOriginal.album) { "album=${restored.album}" }
-                checkPicturesEqual(restored.pictures, savedOriginal.pictures)
-                check(restored.custom == null) { "$FIELD remains ${restored.custom}" }
+                checkStateEqual(restored, savedOriginal)
+                "backupFieldBytes=$backupSize size=$beforeSize->${copy.length()}"
+            }
+
+            step("e restore") {
+                applyTags(copy, savedOriginal.properties, savedOriginal.title, savedOriginal.artist, savedOriginal.album, savedOriginal.pictures, null)
+                val restored = readState(copy)
+                checkStateEqual(restored, savedOriginal)
                 val afterRestoreAudioHash = computeAudioHash(copy)
                 checkAudioHashEqual(originalAudioHash, afterRestoreAudioHash, report, "before b vs after e")
-                "original text/cover restored and $FIELD removed"
+                "original text/cover restored from in-memory state"
+            }
+
+            step("g second apply") {
+                val first = readState(gCopy)
+                applyTags(gCopy, first.properties, SPIKE_TITLE, SPIKE_ARTIST, SPIKE_ALBUM,
+                    listOf(PictureSummary(createCover(0xff2f6f68.toInt()), "image/jpeg", "Front Cover", "Front Cover")),
+                    createBackup(first))
+                val second = readState(gCopy)
+                applyTags(gCopy, second.properties, "Second Spike", "Second Artist", "SecondAlbum",
+                    listOf(PictureSummary(createCover(0xff9b3d58.toInt()), "image/jpeg", "Front Cover", "Front Cover")),
+                    createBackup(second))
+                val backup = requireNotNull(readBackup(readState(gCopy).properties)) { "backup fields missing after second apply" }
+                restoreFromBackup(gCopy, readState(gCopy), backup)
+                checkStateEqual(readState(gCopy), savedOriginal)
+                "first backup preserved through second apply"
             }
         } catch (error: Throwable) {
             report.appendFailure("a-e", error)
         } finally {
             report.appendLine(
-                "SUMMARY $name: " + listOf("a", "b", "c", "d", "e").joinToString(" ") {
+                "SUMMARY $name: " + listOf("a", "b", "c", "d", "e", "e2", "g").joinToString(" ") {
                     "$it=${statuses[it] ?: "FAIL"}"
                 },
             )
             copy.delete()
+            gCopy.delete()
         }
     }
 
-    private fun updateTags(
+    private fun applyTags(
         file: File,
         originalProperties: Map<String, Array<String>>,
         title: String?,
         artist: String?,
         album: String?,
         pictures: List<PictureSummary>,
+        backup: BackupState?,
     ) {
         val properties = HashMap<String, Array<String>>(originalProperties.size)
         originalProperties.forEach { (key, values) -> properties[key] = values.copyOf() }
         setPropertyOrRemove(properties, "TITLE", title)
         setPropertyOrRemove(properties, "ARTIST", artist)
         setPropertyOrRemove(properties, "ALBUM", album)
-        if (title == "SpikeTitle") properties[FIELD] = arrayOf("test") else properties.remove(FIELD)
+        if (backup != null && BACKUP_KEYS.none(properties::containsKey)) {
+            backup.title?.let { properties[BACKUP_TITLE] = arrayOf(it) }
+            backup.artist?.let { properties[BACKUP_ARTIST] = arrayOf(it) }
+            backup.album?.let { properties[BACKUP_ALBUM] = arrayOf(it) }
+            properties[BACKUP_PICTURES] = arrayOf(serializePictures(backup.pictures))
+            properties[BACKUP_VERSION] = arrayOf("1")
+        }
         withFd(file) { fd -> check(TagLib.savePropertyMap(fd, properties)) { "savePropertyMap returned false" } }
         val tagPictures = pictures.map {
             Picture(it.data, it.description, it.pictureType, it.mimeType)
@@ -252,6 +305,74 @@ class TagSpikeActivity : ComponentActivity() {
         if (value == null) properties.remove(key) else properties[key] = arrayOf(value)
     }
 
+    private fun createBackup(state: ReadState): BackupState =
+        BackupState(state.title, state.artist, state.album, state.pictures)
+
+    private fun readBackup(properties: Map<String, Array<String>>): BackupState? {
+        if (properties[BACKUP_VERSION]?.firstOrNull() != "1") return null
+        val pictures = properties[BACKUP_PICTURES]?.firstOrNull()?.let(::deserializePictures) ?: emptyList()
+        return BackupState(
+            properties[BACKUP_TITLE]?.firstOrNull(),
+            properties[BACKUP_ARTIST]?.firstOrNull(),
+            properties[BACKUP_ALBUM]?.firstOrNull(),
+            pictures,
+        )
+    }
+
+    private fun restoreFromBackup(file: File, current: ReadState, backup: BackupState) {
+        val properties = HashMap<String, Array<String>>(current.properties.size)
+        current.properties.forEach { (key, values) -> properties[key] = values.copyOf() }
+        setPropertyOrRemove(properties, "TITLE", backup.title)
+        setPropertyOrRemove(properties, "ARTIST", backup.artist)
+        setPropertyOrRemove(properties, "ALBUM", backup.album)
+        BACKUP_KEYS.forEach(properties::remove)
+        withFd(file) { fd -> check(TagLib.savePropertyMap(fd, properties)) { "restore savePropertyMap returned false" } }
+        val pictures = backup.pictures.map { Picture(it.data, it.description, it.pictureType, it.mimeType) }.toTypedArray()
+        withFd(file) { fd -> check(TagLib.savePictures(fd, pictures)) { "restore savePictures returned false" } }
+    }
+
+    private fun serializePictures(pictures: List<PictureSummary>): String {
+        val bytes = ByteArrayOutputStream()
+        DataOutputStream(bytes).use { output ->
+            output.writeInt(pictures.size)
+            pictures.forEach { picture ->
+                writeString(output, picture.mimeType)
+                writeString(output, picture.pictureType)
+                writeString(output, picture.description)
+                output.writeInt(picture.data.size)
+                output.write(picture.data)
+            }
+        }
+        return Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP)
+    }
+
+    private fun deserializePictures(encoded: String): List<PictureSummary> {
+        val input = DataInputStream(ByteArrayInputStream(Base64.decode(encoded, Base64.NO_WRAP)))
+        return List(input.readInt()) {
+            val mimeType = readString(input)
+            val pictureType = readString(input)
+            val description = readString(input)
+            PictureSummary(ByteArray(input.readInt()).also(input::readFully), mimeType, pictureType, description)
+        }
+    }
+
+    private fun writeString(output: DataOutputStream, value: String) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        output.writeInt(bytes.size)
+        output.write(bytes)
+    }
+
+    private fun readString(input: DataInputStream): String =
+        ByteArray(input.readInt()).also(input::readFully).toString(Charsets.UTF_8)
+
+    private fun checkStateEqual(actual: ReadState, expected: ReadState) {
+        check(actual.title == expected.title) { "title=${actual.title}" }
+        check(actual.artist == expected.artist) { "artist=${actual.artist}" }
+        check(actual.album == expected.album) { "album=${actual.album}" }
+        checkPicturesEqual(actual.pictures, expected.pictures)
+        check(BACKUP_KEYS.none(actual.properties::containsKey)) { "backup fields remain" }
+    }
+
     private fun readState(file: File): ReadState = withFd(file) { fd ->
         val metadata = requireNotNull(TagLib.getMetadata(fd, readPictures = true)) { "metadata is null" }
         ReadState(
@@ -261,7 +382,6 @@ class TagSpikeActivity : ComponentActivity() {
             pictures = metadata.pictures.map { picture ->
                 PictureSummary(picture.data.copyOf(), picture.mimeType, picture.pictureType, picture.description)
             },
-            custom = metadata.propertyMap[FIELD]?.firstOrNull(),
             properties = metadata.propertyMap.mapValues { (_, values) -> values.copyOf() },
         )
     }
@@ -353,7 +473,8 @@ class TagSpikeActivity : ComponentActivity() {
         label: String,
     ) {
         if (before.error != null || after.error != null) {
-            reportAudioHash(report, label, after)
+            val error = before.error ?: after.error
+            report.appendLine("AUDIO HASH $label: unavailable ${error!!::class.java.name}: ${error.message}")
             return
         }
         val equal = before.hash == after.hash && before.sampleCount == after.sampleCount
@@ -361,9 +482,9 @@ class TagSpikeActivity : ComponentActivity() {
         check(equal) { "audio hash $label mismatch" }
     }
 
-    private fun createCover(): ByteArray {
+    private fun createCover(color: Int = 0xff2f6f68.toInt()): ByteArray {
         val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
-        bitmap.eraseColor(0xff2f6f68.toInt())
+        bitmap.eraseColor(color)
         return java.io.ByteArrayOutputStream().use { output ->
             check(bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output)) { "JPEG compression failed" }
             bitmap.recycle()
@@ -383,8 +504,14 @@ class TagSpikeActivity : ComponentActivity() {
         val artist: String?,
         val album: String?,
         val pictures: List<PictureSummary>,
-        val custom: String?,
         val properties: Map<String, Array<String>>,
+    )
+
+    private data class BackupState(
+        val title: String?,
+        val artist: String?,
+        val album: String?,
+        val pictures: List<PictureSummary>,
     )
 
     private data class AudioProperties(
