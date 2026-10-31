@@ -13,8 +13,8 @@ android {
         applicationId = "io.github.saalfy.sur"
         minSdk = 26
         targetSdk = 37
-        versionCode = 7
-        versionName = "0.3.4"
+        versionCode = 8
+        versionName = "0.3.5"
     }
 
     // Release signing comes from Gradle properties outside the repo (e.g. ~/.gradle/gradle.properties).
