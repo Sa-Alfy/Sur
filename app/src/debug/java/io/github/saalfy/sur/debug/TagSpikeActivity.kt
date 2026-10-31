@@ -194,7 +194,7 @@ class TagSpikeActivity : ComponentActivity() {
                 check(afterWrite.title == SPIKE_TITLE) { "title=${afterWrite.title}" }
                 check(afterWrite.artist == SPIKE_ARTIST) { "artist=${afterWrite.artist}" }
                 check(afterWrite.album == SPIKE_ALBUM) { "album=${afterWrite.album}" }
-                checkPicturesEqual(afterWrite.pictures, writtenPictures)
+                checkGeneratedPicturesEqual(afterWrite.pictures, writtenPictures)
                 val afterWriteAudioHash = computeAudioHash(copy)
                 checkAudioHashEqual(originalAudioHash, afterWriteAudioHash, report, "before b vs after b")
                 "Unicode values, all picture bytes and metadata, and backup fields present"
@@ -396,6 +396,14 @@ class TagSpikeActivity : ComponentActivity() {
         }
     }
 
+    private fun checkGeneratedPicturesEqual(actual: List<PictureSummary>, expected: List<PictureSummary>) {
+        check(actual.size == expected.size) { "picture count actual=${actual.size} expected=${expected.size}" }
+        actual.zip(expected).forEachIndexed { index, (actualPicture, expectedPicture) ->
+            check(actualPicture.data.contentEquals(expectedPicture.data)) { "picture[$index] data differs" }
+            check(actualPicture.mimeType == expectedPicture.mimeType) { "picture[$index] mime differs" }
+        }
+    }
+
     private fun readAudioProperties(file: File): AudioProperties = withFd(file) { fd ->
         val properties = requireNotNull(TagLib.getAudioProperties(fd)) { "audio properties are null" }
         AudioProperties(properties.length, properties.bitrate, properties.sampleRate, properties.channels)
@@ -436,7 +444,12 @@ class TagSpikeActivity : ComponentActivity() {
             }
             check(audioTrack >= 0) { "no audio track" }
             val format = extractor.getTrackFormat(audioTrack)
-            val capacity = maxOf(64 * 1024, format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 64 * 1024))
+            val maxInputSize = if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+                format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
+            } else {
+                64 * 1024
+            }
+            val capacity = maxOf(64 * 1024, maxInputSize)
             extractor.selectTrack(audioTrack)
             val buffer = ByteBuffer.allocate(capacity)
             val digest = MessageDigest.getInstance("SHA-256")
