@@ -39,6 +39,12 @@ abstract class PlaylistDao {
     @Query("DELETE FROM playlist_entries WHERE id = :entryId")
     abstract suspend fun deleteEntry(entryId: Long)
 
+    @Query("SELECT DISTINCT playlistId FROM playlist_entries WHERE songId = :songId")
+    protected abstract suspend fun playlistIdsForSong(songId: Long): List<Long>
+
+    @Query("DELETE FROM playlist_entries WHERE songId = :songId")
+    protected abstract suspend fun deleteEntries(songId: Long)
+
     @Query("SELECT COALESCE(MAX(position), -1) FROM playlist_entries WHERE playlistId = :playlistId")
     protected abstract suspend fun maxPosition(playlistId: Long): Int
 
@@ -47,6 +53,17 @@ abstract class PlaylistDao {
 
     @Query("UPDATE playlist_entries SET position = :position WHERE id = :entryId")
     protected abstract suspend fun setPosition(entryId: Long, position: Int)
+
+    @Transaction
+    open suspend fun deleteEntriesForSong(songId: Long) {
+        val playlistIds = playlistIdsForSong(songId)
+        deleteEntries(songId)
+        for (playlistId in playlistIds) {
+            for ((position, entryId) in entryIdsInOrder(playlistId).withIndex()) {
+                setPosition(entryId, position)
+            }
+        }
+    }
 
     @Transaction
     open suspend fun addSongs(playlistId: Long, songIds: List<Long>) {

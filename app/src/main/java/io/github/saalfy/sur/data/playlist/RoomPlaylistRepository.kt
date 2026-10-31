@@ -38,6 +38,8 @@ class RoomPlaylistRepository(
 
     override suspend fun addSongs(playlistId: Long, songIds: List<Long>) = dao.addSongs(playlistId, songIds)
 
+    override suspend fun deleteEntriesForSong(songId: Long) = dao.deleteEntriesForSong(songId)
+
     override suspend fun removeEntry(entryId: Long) = dao.deleteEntry(entryId)
 
     override suspend fun moveEntry(playlistId: Long, fromEntryId: Long, toEntryId: Long) =

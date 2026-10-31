@@ -21,6 +21,8 @@ interface PlaylistRepository {
     /** Appends songs in order. Songs already in the playlist are ignored. */
     suspend fun addSongs(playlistId: Long, songIds: List<Long>)
 
+    suspend fun deleteEntriesForSong(songId: Long)
+
     suspend fun removeEntry(entryId: Long)
 
     /** Moves [fromEntryId] to the position currently held by [toEntryId]. */
