@@ -3,6 +3,8 @@ package io.github.saalfy.sur.debug
 import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.net.Uri
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
@@ -33,6 +35,8 @@ import com.kyant.taglib.TagLib
 import io.github.saalfy.sur.ui.theme.SurTheme
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -149,6 +153,8 @@ class TagSpikeActivity : ComponentActivity() {
             }
             val savedOriginal = requireNotNull(original) { "step a did not produce original state" }
             val originalDuration = readDuration(copy)
+            val originalAudioHash = computeAudioHash(copy)
+            reportAudioHash(report, "before b", originalAudioHash)
             val writtenCover = createCover()
             val writtenPictures = listOf(PictureSummary(writtenCover, "image/jpeg", "Front Cover", "Front Cover"))
             val beforeSize = copy.length()
@@ -166,6 +172,8 @@ class TagSpikeActivity : ComponentActivity() {
                 check(afterWrite.album == "SpikeAlbum") { "album=${afterWrite.album}" }
                 checkPicturesEqual(afterWrite.pictures, writtenPictures)
                 check(afterWrite.custom == "test") { "custom=${afterWrite.custom}" }
+                val afterWriteAudioHash = computeAudioHash(copy)
+                checkAudioHashEqual(originalAudioHash, afterWriteAudioHash, report, "before b vs after b")
                 "values, all picture bytes and metadata, and $FIELD equal"
             }
 
@@ -203,6 +211,8 @@ class TagSpikeActivity : ComponentActivity() {
                 check(restored.album == savedOriginal.album) { "album=${restored.album}" }
                 checkPicturesEqual(restored.pictures, savedOriginal.pictures)
                 check(restored.custom == null) { "$FIELD remains ${restored.custom}" }
+                val afterRestoreAudioHash = computeAudioHash(copy)
+                checkAudioHashEqual(originalAudioHash, afterRestoreAudioHash, report, "before b vs after e")
                 "original text/cover restored and $FIELD removed"
             }
         } catch (error: Throwable) {
@@ -293,6 +303,64 @@ class TagSpikeActivity : ComponentActivity() {
         }
     }
 
+    private fun computeAudioHash(file: File): AudioHash {
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(file.absolutePath)
+            var audioTrack = -1
+            for (index in 0 until extractor.trackCount) {
+                if (extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                    audioTrack = index
+                    break
+                }
+            }
+            check(audioTrack >= 0) { "no audio track" }
+            val format = extractor.getTrackFormat(audioTrack)
+            val capacity = maxOf(64 * 1024, format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 64 * 1024))
+            extractor.selectTrack(audioTrack)
+            val buffer = ByteBuffer.allocate(capacity)
+            val digest = MessageDigest.getInstance("SHA-256")
+            var sampleCount = 0L
+            while (true) {
+                buffer.clear()
+                val sampleSize = extractor.readSampleData(buffer, 0)
+                if (sampleSize < 0) break
+                digest.update(buffer.array(), 0, sampleSize)
+                sampleCount++
+                extractor.advance()
+            }
+            digest.update(ByteBuffer.allocate(Long.SIZE_BYTES).putLong(sampleCount).array())
+            AudioHash(digest.digest().joinToString("") { byte -> "%02x".format(byte) }, sampleCount, null)
+        } catch (error: Throwable) {
+            AudioHash(null, 0, error)
+        } finally {
+            extractor.release()
+        }
+    }
+
+    private fun reportAudioHash(report: StringBuilder, label: String, result: AudioHash) {
+        if (result.error != null) {
+            report.appendLine("AUDIO HASH $label: unavailable ${result.error::class.java.name}: ${result.error.message}")
+        } else {
+            report.appendLine("AUDIO HASH $label: ${result.hash} samples=${result.sampleCount}")
+        }
+    }
+
+    private fun checkAudioHashEqual(
+        before: AudioHash,
+        after: AudioHash,
+        report: StringBuilder,
+        label: String,
+    ) {
+        if (before.error != null || after.error != null) {
+            reportAudioHash(report, label, after)
+            return
+        }
+        val equal = before.hash == after.hash && before.sampleCount == after.sampleCount
+        report.appendLine("AUDIO HASH $label: ${if (equal) "equal" else "not equal"}")
+        check(equal) { "audio hash $label mismatch" }
+    }
+
     private fun createCover(): ByteArray {
         val bitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(0xff2f6f68.toInt())
@@ -324,6 +392,12 @@ class TagSpikeActivity : ComponentActivity() {
         val bitrate: Int,
         val sampleRate: Int,
         val channels: Int,
+    )
+
+    private data class AudioHash(
+        val hash: String?,
+        val sampleCount: Long,
+        val error: Throwable?,
     )
 
     private data class PictureSummary(
