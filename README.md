@@ -21,6 +21,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 
 - **Plays your local music**: scans the device library via MediaStore (skips ringtones, notification sounds and clips under 30 s).
 - **Playlists first**: the home screen is your playlists with 2×2 cover mosaics. Create, rename, delete, drag to reorder, and add songs one at a time or by multi-select.
+- **Delete songs from your phone (asks first)**.
 - **Background playback**: Media3 service with notification and lock screen controls, audio focus, and pause when headphones are unplugged.
 - **Now playing**: art-tinted background gradient and controls via Palette, smooth crossfading, seek bar, shuffle, repeat (off / all / one), tap-to-jump queue view, and a persistent mini player.
 - **Search**: songs by title, artist or album; playlists by name.
@@ -42,7 +43,7 @@ Android 8.0 (API 26) or newer.
 
 Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
-- **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked when you save a download.
+- **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked when you save a download or delete a song.
 - **Notifications** (Android 13+, optional): to show playback controls and download progress.
 - **Network access**: used only for downloads you start and for Find cover & details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).
 
