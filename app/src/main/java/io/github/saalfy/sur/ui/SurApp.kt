@@ -133,6 +133,15 @@ fun SurApp(
                         shownTab == TAB_SONGS -> SongsScreen(
                             onPlay = play,
                             currentSongId = { playerState?.currentItem?.songId },
+                            removeFromQueue = { songId ->
+                                controller?.let { player ->
+                                    for (index in player.mediaItemCount - 1 downTo 0) {
+                                        if (player.getMediaItemAt(index).mediaId == songId.toString()) {
+                                            player.removeMediaItem(index)
+                                        }
+                                    }
+                                }
+                            },
                         )
                         else -> DownloadScreen(onPlay = play, initialUrl = sharedUrl)
                     }

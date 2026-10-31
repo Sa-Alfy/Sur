@@ -1,5 +1,9 @@
 package io.github.saalfy.sur.ui.songs
 
+import android.app.Activity
+import android.Manifest
+import android.content.IntentSender
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -19,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,11 +36,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,8 +53,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.saalfy.sur.R
+import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.data.MediaStoreUris
 import io.github.saalfy.sur.data.Song
+import io.github.saalfy.sur.data.ArtworkEvictor
+import io.github.saalfy.sur.data.DeleteAttempt
+import io.github.saalfy.sur.data.MediaStoreSongDeleter
+import io.github.saalfy.sur.data.QueueSongRemover
+import io.github.saalfy.sur.data.SongDeleteStart
+import io.github.saalfy.sur.data.SongDeletionCoordinator
 import io.github.saalfy.sur.ui.artwork.Artwork
 import io.github.saalfy.sur.ui.artwork.ArtworkLoader
 import io.github.saalfy.sur.ui.artwork.ThumbnailSize
@@ -55,9 +69,11 @@ import io.github.saalfy.sur.ui.artwork.rememberArtworkLoader
 import androidx.compose.ui.platform.LocalDensity
 import io.github.saalfy.sur.ui.common.AddToPlaylistDialog
 import io.github.saalfy.sur.ui.common.CenteredMessage
+import io.github.saalfy.sur.ui.common.ConfirmDialog
 import io.github.saalfy.sur.ui.common.SearchableTopBar
 import io.github.saalfy.sur.ui.common.formatDuration
 import io.github.saalfy.sur.ui.info.FindInfoHost
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,10 +81,13 @@ fun SongsScreen(
     onPlay: (songs: List<Song>, startIndex: Int) -> Unit,
     /** Read inside each row, so a song change recomposes only the visible rows. */
     currentSongId: () -> Long?,
+    removeFromQueue: (songId: Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SongsViewModel = viewModel(factory = SongsViewModel.Factory),
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val application = context.applicationContext as SurApplication
     // Resolved once here instead of per lazy item.
     val loader = rememberArtworkLoader()
     val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
@@ -82,7 +101,72 @@ fun SongsScreen(
     // Song ids waiting for a playlist choice; non-null shows the picker.
     var pendingAdd by remember { mutableStateOf<List<Long>?>(null) }
     var findInfoSong by remember { mutableStateOf<Song?>(null) }
+    var deleteSong by remember { mutableStateOf<Song?>(null) }
+    var pendingDelete by remember { mutableStateOf<SongDeleteStart.Confirmation?>(null) }
+    var permissionSongId by remember { mutableStateOf<Long?>(null) }
     val selecting = selected.isNotEmpty()
+
+    val deletionCoordinator = remember {
+        SongDeletionCoordinator(
+            deleter = MediaStoreSongDeleter(context),
+            keyResolver = application.container.songKeyResolver,
+            queueSongRemover = object : QueueSongRemover {
+                override suspend fun remove(songId: Long) = removeFromQueue(songId)
+            },
+            playlistRepository = application.container.playlistRepository,
+            infoRepository = application.container.songInfoRepository,
+            coverStore = application.container.coverStore,
+            artworkEvictor = object : ArtworkEvictor {
+                override fun evict(songId: Long) = loader.evict(songId)
+            },
+        )
+    }
+
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val songId = permissionSongId
+        permissionSongId = null
+        if (songId != null) {
+            if (granted) {
+                scope.launch {
+                    when (val start = deletionCoordinator.begin(songId)) {
+                        SongDeleteStart.Deleted -> Toast.makeText(context, R.string.deleted, Toast.LENGTH_SHORT).show()
+                        SongDeleteStart.Failed -> Toast.makeText(context, R.string.delete_failed, Toast.LENGTH_SHORT).show()
+                        SongDeleteStart.PermissionRequired -> Toast.makeText(context, R.string.delete_failed, Toast.LENGTH_SHORT).show()
+                        is SongDeleteStart.Confirmation -> pendingDelete = start
+                    }
+                }
+            } else {
+                Toast.makeText(context, R.string.delete_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val intentSenderLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        val confirmation = pendingDelete
+        pendingDelete = null
+        if (confirmation != null && result.resultCode == Activity.RESULT_OK) {
+            scope.launch {
+                val deleted = deletionCoordinator.finish(confirmation, confirmed = true)
+                Toast.makeText(
+                    context,
+                    if (deleted) R.string.deleted else R.string.delete_failed,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
+    LaunchedEffect(pendingDelete) {
+        pendingDelete?.let { confirmation ->
+            intentSenderLauncher.launch(
+                androidx.activity.result.IntentSenderRequest.Builder(confirmation.intentSender).build(),
+            )
+        }
+    }
 
     BackHandler(enabled = selecting) { selected = emptySet() }
 
@@ -181,6 +265,7 @@ fun SongsScreen(
                             onLongClick = { selected = selected + song.id },
                             onAddToPlaylist = { pendingAdd = listOf(song.id) },
                             onFindInfo = { findInfoSong = song },
+                            onDelete = { deleteSong = song },
                         )
                     }
                 }
@@ -208,6 +293,26 @@ fun SongsScreen(
     }
 
     FindInfoHost(song = findInfoSong, onFinished = { findInfoSong = null })
+
+    deleteSong?.let { song ->
+        ConfirmDialog(
+            title = stringResource(R.string.delete_song),
+            message = stringResource(R.string.delete_song_message, song.title),
+            confirmLabel = stringResource(R.string.delete),
+            onConfirm = {
+                deleteSong = null
+                scope.launch {
+                    when (val start = deletionCoordinator.begin(song.id)) {
+                        SongDeleteStart.Deleted -> Toast.makeText(context, R.string.deleted, Toast.LENGTH_SHORT).show()
+                        SongDeleteStart.PermissionRequired -> permissionSongId = song.id
+                        SongDeleteStart.Failed -> Toast.makeText(context, R.string.delete_failed, Toast.LENGTH_SHORT).show()
+                        is SongDeleteStart.Confirmation -> pendingDelete = start
+                    }
+                }
+            },
+            onDismiss = { deleteSong = null },
+        )
+    }
 }
 
 @Composable
@@ -224,6 +329,7 @@ private fun SongRow(
     onLongClick: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onFindInfo: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val accent = MaterialTheme.colorScheme.primary
@@ -291,6 +397,10 @@ private fun SongRow(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.find_info)) },
                             onClick = { menuOpen = false; onFindInfo() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete_song_action)) },
+                            onClick = { menuOpen = false; onDelete() },
                         )
                     }
                 }

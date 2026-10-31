@@ -30,6 +30,11 @@
     <string name="delete">Delete</string>
     <string name="delete_playlist">Delete playlist?</string>
     <string name="delete_playlist_message">“%1$s” will be deleted. Your music files are not affected.</string>
+    <string name="delete_song_action">Delete from phone</string>
+    <string name="delete_song">Delete song?</string>
+    <string name="delete_song_message">“%1$s” will be deleted from this phone. This can\'t be undone.</string>
+    <string name="deleted">Deleted</string>
+    <string name="delete_failed">Couldn\'t delete the song</string>
     <string name="cancel">Cancel</string>
     <string name="add_to_playlist">Add to playlist</string>
     <string name="added_to">Added to %1$s</string>
