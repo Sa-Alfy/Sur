@@ -162,9 +162,11 @@ fun SongsScreen(
 
     LaunchedEffect(pendingDelete) {
         pendingDelete?.let { confirmation ->
-            intentSenderLauncher.launch(
-                androidx.activity.result.IntentSenderRequest.Builder(confirmation.intentSender).build(),
-            )
+            confirmation.intentSender?.let { sender ->
+                intentSenderLauncher.launch(
+                    androidx.activity.result.IntentSenderRequest.Builder(sender).build(),
+                )
+            }
         }
     }
 

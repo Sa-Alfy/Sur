@@ -21,7 +21,7 @@ sealed interface SongDeleteStart {
     data class Confirmation(
         val songId: Long,
         val key: String?,
-        val intentSender: IntentSender,
+        val intentSender: IntentSender?,
         val mode: DeleteConfirmationMode,
     ) : SongDeleteStart
 }

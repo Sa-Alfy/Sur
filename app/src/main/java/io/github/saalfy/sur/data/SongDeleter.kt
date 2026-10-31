@@ -21,7 +21,7 @@ sealed interface DeleteAttempt {
     data object PermissionRequired : DeleteAttempt
     data object Failed : DeleteAttempt
     data class Confirmation(
-        val intentSender: IntentSender,
+        val intentSender: IntentSender?,
         val mode: DeleteConfirmationMode,
     ) : DeleteAttempt
 }
