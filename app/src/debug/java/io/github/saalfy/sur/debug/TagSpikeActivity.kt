@@ -33,7 +33,6 @@ import com.kyant.taglib.TagLib
 import io.github.saalfy.sur.ui.theme.SurTheme
 import java.io.File
 import java.io.FileOutputStream
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,6 +59,14 @@ class TagSpikeActivity : ComponentActivity() {
                     getSystemService(android.content.ClipboardManager::class.java)
                         .setPrimaryClip(android.content.ClipData.newPlainText("Tag spike report", report))
                 }
+                val shareReport = {
+                    startActivity(
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, report)
+                        },
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -70,10 +77,13 @@ class TagSpikeActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { pickAudio.launch(arrayOf("audio/*")) },
                     ) { Text("Pick audio files") }
-                    Button(
+                    androidx.compose.foundation.layout.Row(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = copyReport,
-                    ) { Text("Copy report") }
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Button(modifier = Modifier.weight(1f), onClick = copyReport) { Text("Copy report") }
+                        Button(modifier = Modifier.weight(1f), onClick = shareReport) { Text("Share report") }
+                    }
                     Text(
                         text = report,
                         modifier = Modifier
@@ -105,32 +115,45 @@ class TagSpikeActivity : ComponentActivity() {
 
     private fun runFile(uri: Uri, report: StringBuilder) {
         val name = queryName(uri) ?: "selected-${System.currentTimeMillis()}.audio"
+        val statuses = linkedMapOf<String, String>()
         val copy = File(cacheDir, "tag-spike-${System.nanoTime()}-${name.substringAfterLast('/')}")
         contentResolver.openInputStream(uri).use { input ->
             requireNotNull(input) { "Could not open $uri" }
             FileOutputStream(copy).use { output -> input.copyTo(output) }
         }
         try {
-            fun step(name: String, action: () -> String) {
+            fun step(stepName: String, action: () -> String) {
                 try {
-                    report.appendLine("PASS $name: ${action()}")
+                    report.appendLine("PASS $stepName: ${action()}")
+                    statuses[stepName.substringBefore(' ')] = "PASS"
                 } catch (error: Throwable) {
-                    report.appendFailure(name, error)
+                    report.appendFailure(stepName, error)
+                    statuses[stepName.substringBefore(' ')] = "FAIL"
                 }
             }
 
-            val original = readState(copy)
+            var original: ReadState? = null
             step("a read") {
+                original = readState(copy)
+                val audio = readAudioProperties(copy)
+                val pictures = readPictureSummaries(copy)
+                val read = requireNotNull(original)
                 "format=${copy.extension.ifBlank { "(none)" }} size=${copy.length()} " +
-                    "title=${original.title} artist=${original.artist} album=${original.album} " +
-                    "coverExists=${original.cover != null} coverBytes=${original.cover?.size ?: 0}"
+                    "mime=${contentResolver.getType(uri)} title=${read.title} artist=${read.artist} " +
+                    "album=${read.album} audioLength=${audio.length} bitrate=${audio.bitrate} " +
+                    "sampleRate=${audio.sampleRate} channels=${audio.channels} pictures=${pictures.size}\n" +
+                    pictures.mapIndexed { index, picture ->
+                        "picture[$index] mime=${picture.mimeType} type=${picture.pictureType} " +
+                            "description=${picture.description} size=${picture.data.size}"
+                    }.joinToString("\n")
             }
+            val savedOriginal = requireNotNull(original) { "step a did not produce original state" }
             val originalDuration = readDuration(copy)
             val writtenCover = createCover()
             val beforeSize = copy.length()
             val writeStart = System.nanoTime()
             step("b write") {
-                updateTags(copy, original.properties, "SpikeTitle", "SpikeArtist", "SpikeAlbum", writtenCover)
+                updateTags(copy, savedOriginal.properties, "SpikeTitle", "SpikeArtist", "SpikeAlbum", writtenCover)
                 val writeMs = (System.nanoTime() - writeStart) / 1_000_000
                 "${writeMs}ms size=$beforeSize->${copy.length()} coverBytes=${writtenCover.size}"
             }
@@ -172,12 +195,12 @@ class TagSpikeActivity : ComponentActivity() {
             }
 
             step("e restore") {
-                updateTags(copy, original.properties, original.title, original.artist, original.album, original.cover)
+                updateTags(copy, savedOriginal.properties, savedOriginal.title, savedOriginal.artist, savedOriginal.album, savedOriginal.cover)
                 val restored = readState(copy)
-                check(restored.title == original.title) { "title=${restored.title}" }
-                check(restored.artist == original.artist) { "artist=${restored.artist}" }
-                check(restored.album == original.album) { "album=${restored.album}" }
-                check(original.cover?.let { restored.cover?.contentEquals(it) == true } ?: (restored.cover == null)) {
+                check(restored.title == savedOriginal.title) { "title=${restored.title}" }
+                check(restored.artist == savedOriginal.artist) { "artist=${restored.artist}" }
+                check(restored.album == savedOriginal.album) { "album=${restored.album}" }
+                check(savedOriginal.cover?.let { restored.cover?.contentEquals(it) == true } ?: (restored.cover == null)) {
                     "cover bytes differ after restore"
                 }
                 check(restored.custom == null) { "$FIELD remains ${restored.custom}" }
@@ -186,6 +209,11 @@ class TagSpikeActivity : ComponentActivity() {
         } catch (error: Throwable) {
             report.appendFailure("a-e", error)
         } finally {
+            report.appendLine(
+                "SUMMARY $name: " + listOf("a", "b", "c", "d", "e").joinToString(" ") {
+                    "$it=${statuses[it] ?: "FAIL"}"
+                },
+            )
             copy.delete()
         }
     }
@@ -227,6 +255,17 @@ class TagSpikeActivity : ComponentActivity() {
         )
     }
 
+    private fun readAudioProperties(file: File): AudioProperties = withFd(file) { fd ->
+        val properties = requireNotNull(TagLib.getAudioProperties(fd)) { "audio properties are null" }
+        AudioProperties(properties.length, properties.bitrate, properties.sampleRate, properties.channels)
+    }
+
+    private fun readPictureSummaries(file: File): List<PictureSummary> = withFd(file) { fd ->
+        TagLib.getPictures(fd).map { picture ->
+            PictureSummary(picture.data, picture.mimeType, picture.pictureType, picture.description)
+        }
+    }
+
     private fun <T> withFd(file: File, block: (Int) -> T): T =
         ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_WRITE).use { descriptor ->
             block(descriptor.dup().detachFd())
@@ -256,10 +295,6 @@ class TagSpikeActivity : ComponentActivity() {
     private fun queryName(uri: Uri): String? = contentResolver.query(uri, arrayOf("_display_name"), null, null, null)
         ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
 
-    private fun appendFailure(step: String, error: Throwable) {
-        reportState.value += "FAIL $step: ${error::class.java.name}: ${error.message}\n"
-    }
-
     private fun StringBuilder.appendFailure(step: String, error: Throwable) {
         appendLine("FAIL $step: ${error::class.java.name}: ${error.message}")
     }
@@ -271,5 +306,19 @@ class TagSpikeActivity : ComponentActivity() {
         val cover: ByteArray?,
         val custom: String?,
         val properties: Map<String, Array<String>>,
+    )
+
+    private data class AudioProperties(
+        val length: Int,
+        val bitrate: Int,
+        val sampleRate: Int,
+        val channels: Int,
+    )
+
+    private data class PictureSummary(
+        val data: ByteArray,
+        val mimeType: String,
+        val pictureType: String,
+        val description: String,
     )
 }
