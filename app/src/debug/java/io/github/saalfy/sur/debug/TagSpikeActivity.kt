@@ -141,6 +141,7 @@ class TagSpikeActivity : ComponentActivity() {
         }
         val gCopy = File(cacheDir, "tag-spike-g-${System.nanoTime()}-${name.substringAfterLast('/')}")
         copy.copyTo(gCopy, overwrite = true)
+        var preflightStatus = "SKIP (step a unavailable)"
         try {
             fun step(stepName: String, action: () -> String) {
                 try {
@@ -153,15 +154,24 @@ class TagSpikeActivity : ComponentActivity() {
             }
 
             var original: ReadState? = null
+            var afterWriteState: ReadState? = null
+            var afterE2State: ReadState? = null
+            var afterEState: ReadState? = null
             step("a read") {
                 original = readState(copy)
                 val audio = readAudioProperties(copy)
                 val pictures = readPictureSummaries(copy)
                 val read = requireNotNull(original)
+                preflightStatus = if (audio.length <= 0 || audio.bitrate <= 0 || audio.sampleRate <= 0) {
+                    "SKIP (audioLength=${audio.length}, bitrate=${audio.bitrate}, sampleRate=${audio.sampleRate})"
+                } else {
+                    "OK"
+                }
                 "format=${copy.extension.ifBlank { "(none)" }} size=${copy.length()} " +
                     "mime=${contentResolver.getType(uri)} title=${read.title} artist=${read.artist} " +
                     "album=${read.album} audioLength=${audio.length} bitrate=${audio.bitrate} " +
                     "sampleRate=${audio.sampleRate} channels=${audio.channels} pictures=${pictures.size}\n" +
+                    "otherKeys=${otherTagKeys(read.properties).joinToString(",").ifBlank { "(none)" }}\n" +
                     pictures.mapIndexed { index, picture ->
                         "picture[$index] mime=${picture.mimeType} type=${picture.pictureType} " +
                             "description=${picture.description} size=${picture.data.size}"
@@ -195,6 +205,7 @@ class TagSpikeActivity : ComponentActivity() {
                 check(afterWrite.artist == SPIKE_ARTIST) { "artist=${afterWrite.artist}" }
                 check(afterWrite.album == SPIKE_ALBUM) { "album=${afterWrite.album}" }
                 checkGeneratedPicturesEqual(afterWrite.pictures, writtenPictures)
+                afterWriteState = afterWrite
                 val afterWriteAudioHash = computeAudioHash(copy)
                 checkAudioHashEqual(originalAudioHash, afterWriteAudioHash, report, "before b vs after b")
                 "Unicode values, all picture bytes and metadata, and backup fields present"
@@ -233,6 +244,7 @@ class TagSpikeActivity : ComponentActivity() {
                 val backupSize = current.properties[BACKUP_PICTURES]?.firstOrNull()?.toByteArray(Charsets.UTF_8)?.size ?: 0
                 restoreFromBackup(copy, current, backup)
                 val restored = readState(copy)
+                afterE2State = restored
                 checkStateEqual(restored, savedOriginal)
                 "backupFieldBytes=$backupSize size=$beforeSize->${copy.length()}"
             }
@@ -240,6 +252,7 @@ class TagSpikeActivity : ComponentActivity() {
             step("e restore") {
                 applyTags(copy, savedOriginal.properties, savedOriginal.title, savedOriginal.artist, savedOriginal.album, savedOriginal.pictures, null)
                 val restored = readState(copy)
+                afterEState = restored
                 checkStateEqual(restored, savedOriginal)
                 val afterRestoreAudioHash = computeAudioHash(copy)
                 checkAudioHashEqual(originalAudioHash, afterRestoreAudioHash, report, "before b vs after e")
@@ -260,13 +273,21 @@ class TagSpikeActivity : ComponentActivity() {
                 checkStateEqual(readState(gCopy), savedOriginal)
                 "first backup preserved through second apply"
             }
+
+            step("h other tags") {
+                val originalOther = otherProperties(savedOriginal.properties)
+                checkOtherPropertiesEqual("after b", originalOther, otherProperties(requireNotNull(afterWriteState).properties))
+                checkOtherPropertiesEqual("after e2", originalOther, otherProperties(requireNotNull(afterE2State).properties))
+                checkOtherPropertiesEqual("after e", originalOther, otherProperties(requireNotNull(afterEState).properties))
+                "keys=${originalOther.keys.joinToString(",").ifBlank { "(none)" }} equal after b/e2/e"
+            }
         } catch (error: Throwable) {
             report.appendFailure("a-e", error)
         } finally {
             report.appendLine(
-                "SUMMARY $name: " + listOf("a", "b", "c", "d", "e", "e2", "g").joinToString(" ") {
+                "SUMMARY $name: " + listOf("a", "b", "c", "d", "e", "e2", "g", "h").joinToString(" ") {
                     "$it=${statuses[it] ?: "FAIL"}"
-                },
+                } + " preflight=$preflightStatus",
             )
             copy.delete()
             gCopy.delete()
@@ -303,6 +324,29 @@ class TagSpikeActivity : ComponentActivity() {
 
     private fun setPropertyOrRemove(properties: HashMap<String, Array<String>>, key: String, value: String?) {
         if (value == null) properties.remove(key) else properties[key] = arrayOf(value)
+    }
+
+    private fun otherTagKeys(properties: Map<String, Array<String>>): List<String> =
+        otherProperties(properties).keys.sorted()
+
+    private fun otherProperties(properties: Map<String, Array<String>>): Map<String, List<String>> =
+        properties
+            .filterKeys { key ->
+                key != "TITLE" && key != "ARTIST" && key != "ALBUM" && !key.startsWith(BACKUP_PREFIX)
+            }
+            .mapValues { (_, values) -> values.toList() }
+
+    private fun checkOtherPropertiesEqual(
+        label: String,
+        expected: Map<String, List<String>>,
+        actual: Map<String, List<String>>,
+    ) {
+        check(expected.keys == actual.keys) {
+            "$label other-tag keys differ expected=${expected.keys.sorted()} actual=${actual.keys.sorted()}"
+        }
+        expected.forEach { (key, values) ->
+            check(values == actual[key]) { "$label other-tag $key differs" }
+        }
     }
 
     private fun createBackup(state: ReadState): BackupState =
