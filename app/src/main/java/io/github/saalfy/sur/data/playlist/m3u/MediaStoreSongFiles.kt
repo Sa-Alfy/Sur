@@ -7,6 +7,16 @@ import io.github.saalfy.sur.data.MIN_SONG_DURATION_MS
 import io.github.saalfy.sur.data.MediaStoreUris
 import io.github.saalfy.sur.data.info.relativeFromAbsolute
 
+const val MEDIA_STORE_QUERY_CHUNK_SIZE = 500
+
+/**
+ * Splits song IDs into chunks of at most [chunkSize] (default 500) to respect SQLite parameter limits.
+ */
+fun chunkSongIds(songIds: Set<Long>, chunkSize: Int = MEDIA_STORE_QUERY_CHUNK_SIZE): List<List<Long>> {
+    if (songIds.isEmpty()) return emptyList()
+    return songIds.chunked(chunkSize)
+}
+
 /**
  * Reads relative paths and display names from MediaStore for a given set of song IDs.
  * Returns a map from song ID to [MatchableSong].
@@ -18,6 +28,18 @@ object MediaStoreSongFiles {
 
     @Suppress("DEPRECATION")
     fun query(resolver: ContentResolver, songIds: Set<Long>): Map<Long, MatchableSong> {
+        if (songIds.isEmpty()) return emptyMap()
+
+        val chunks = chunkSongIds(songIds)
+        val result = mutableMapOf<Long, MatchableSong>()
+        for (chunk in chunks) {
+            result.putAll(queryChunk(resolver, chunk))
+        }
+        return result
+    }
+
+    @Suppress("DEPRECATION")
+    private fun queryChunk(resolver: ContentResolver, songIds: List<Long>): Map<Long, MatchableSong> {
         if (songIds.isEmpty()) return emptyMap()
 
         val projection = buildList {
