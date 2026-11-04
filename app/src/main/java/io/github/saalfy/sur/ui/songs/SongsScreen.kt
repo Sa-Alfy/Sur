@@ -95,6 +95,13 @@ fun SongsScreen(
     val visibleSongs by viewModel.visibleSongs.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val playlistError by viewModel.error.collectAsStateWithLifecycle()
+    LaunchedEffect(playlistError) {
+        if (playlistError != null) {
+            Toast.makeText(context, R.string.playlist_update_failed, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
     var searching by rememberSaveable { mutableStateOf(false) }
 
     var selected by remember { mutableStateOf(emptySet<Long>()) }

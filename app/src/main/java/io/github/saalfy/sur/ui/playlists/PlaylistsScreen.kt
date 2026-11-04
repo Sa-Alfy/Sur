@@ -1,5 +1,6 @@
 package io.github.saalfy.sur.ui.playlists
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -36,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +59,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.Button
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import io.github.saalfy.sur.data.MediaStoreUris
@@ -88,6 +91,14 @@ fun PlaylistsScreen(
     val playlists by viewModel.visiblePlaylists.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val importResult by viewModel.importResult.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(error) {
+        if (error != null) {
+            Toast.makeText(context, R.string.playlist_update_failed, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
     val loader = rememberArtworkLoader()
     val thumbnailPx = with(LocalDensity.current) { ThumbnailSize.roundToPx() }
     var searching by rememberSaveable { mutableStateOf(false) }

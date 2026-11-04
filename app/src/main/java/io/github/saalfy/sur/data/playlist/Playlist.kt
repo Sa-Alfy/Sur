@@ -14,3 +14,7 @@ const val MAX_COVER_SONGS = 4
 
 /** A song in a playlist. [entryId] identifies this occurrence for remove/reorder. */
 data class PlaylistSong(val entryId: Long, val song: Song)
+
+sealed interface PlaylistError {
+    data object UpdateFailed : PlaylistError
+}

@@ -1,5 +1,8 @@
 package io.github.saalfy.sur.ui.playlist
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -60,6 +63,14 @@ fun PlaylistDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val exportResult by viewModel.exportResult.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(error) {
+        if (error != null) {
+            Toast.makeText(context, R.string.playlist_update_failed, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
     val state = uiState
 
     if (state is PlaylistDetailUiState.Missing) {

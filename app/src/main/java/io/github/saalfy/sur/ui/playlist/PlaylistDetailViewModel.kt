@@ -9,12 +9,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.data.playlist.Playlist
+import io.github.saalfy.sur.data.playlist.PlaylistError
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.PlaylistSong
 import io.github.saalfy.sur.data.playlist.m3u.M3uEntry
 import io.github.saalfy.sur.data.playlist.m3u.M3uWriter
 import io.github.saalfy.sur.data.playlist.m3u.MediaStoreSongFiles
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,7 +42,8 @@ sealed interface ExportResult {
 class PlaylistDetailViewModel(
     private val playlistId: Long,
     private val repository: PlaylistRepository,
-    private val contentResolver: ContentResolver,
+    private val contentResolver: ContentResolver? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
     val uiState: StateFlow<PlaylistDetailUiState> =
@@ -51,19 +54,45 @@ class PlaylistDetailViewModel(
     private val _exportResult = MutableStateFlow<ExportResult?>(null)
     val exportResult: StateFlow<ExportResult?> = _exportResult.asStateFlow()
 
-    fun remove(entryId: Long) = viewModelScope.launch { repository.removeEntry(entryId) }
+    private val _error = MutableStateFlow<PlaylistError?>(null)
+    val error: StateFlow<PlaylistError?> = _error.asStateFlow()
 
-    fun move(fromEntryId: Long, toEntryId: Long) =
-        viewModelScope.launch { repository.moveEntry(playlistId, fromEntryId, toEntryId) }
+    fun clearError() {
+        _error.value = null
+    }
+
+    fun remove(entryId: Long) = viewModelScope.launch(ioDispatcher) {
+        try {
+            repository.removeEntry(entryId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _error.value = PlaylistError.UpdateFailed
+        }
+    }
+
+    fun move(fromEntryId: Long, toEntryId: Long) = viewModelScope.launch(ioDispatcher) {
+        try {
+            repository.moveEntry(playlistId, fromEntryId, toEntryId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _error.value = PlaylistError.UpdateFailed
+        }
+    }
 
     fun exportToUri(uri: android.net.Uri) {
+        val resolver = contentResolver ?: run {
+            _exportResult.value = ExportResult.Failed
+            return
+        }
         val state = uiState.value as? PlaylistDetailUiState.Loaded ?: return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 try {
                     val songs = state.songs
                     val songIds = songs.map { it.song.id }.toSet()
-                    val songFiles = MediaStoreSongFiles.query(contentResolver, songIds)
+                    val songFiles = MediaStoreSongFiles.query(resolver, songIds)
 
                     val entries = songs.map { ps ->
                         val sf = songFiles[ps.song.id]
@@ -76,7 +105,7 @@ class PlaylistDetailViewModel(
                     }
 
                     val writeResult = M3uWriter.write(state.playlist.name, entries)
-                    val stream = contentResolver.openOutputStream(uri)
+                    val stream = resolver.openOutputStream(uri)
                     if (stream == null) {
                         _exportResult.value = ExportResult.Failed
                         return@withContext

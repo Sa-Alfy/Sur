@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.saalfy.sur.SurApplication
+import io.github.saalfy.sur.data.playlist.PlaylistError
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.PlaylistSummary
 import io.github.saalfy.sur.data.playlist.m3u.M3uMatcher
@@ -18,6 +19,7 @@ import io.github.saalfy.sur.data.search.SEARCH_DEBOUNCE_MS
 import io.github.saalfy.sur.data.search.filterPlaylists
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +47,8 @@ sealed interface ImportResult {
 
 class PlaylistsViewModel(
     private val repository: PlaylistRepository,
-    private val contentResolver: ContentResolver,
+    private val contentResolver: ContentResolver? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
     /** null while loading. */
@@ -58,6 +61,9 @@ class PlaylistsViewModel(
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
 
+    private val _error = MutableStateFlow<PlaylistError?>(null)
+    val error: StateFlow<PlaylistError?> = _error.asStateFlow()
+
     /** [playlists] filtered by name with the debounced query; null while loading. */
     @OptIn(FlowPreview::class)
     val visiblePlaylists: StateFlow<List<PlaylistSummary>?> =
@@ -69,19 +75,51 @@ class PlaylistsViewModel(
         _query.value = query
     }
 
-    fun create(name: String) = viewModelScope.launch { repository.create(name) }
+    fun clearError() {
+        _error.value = null
+    }
 
-    fun rename(id: Long, name: String) = viewModelScope.launch { repository.rename(id, name) }
+    fun create(name: String) = viewModelScope.launch(ioDispatcher) {
+        try {
+            repository.create(name)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _error.value = PlaylistError.UpdateFailed
+        }
+    }
 
-    fun delete(id: Long) = viewModelScope.launch { repository.delete(id) }
+    fun rename(id: Long, name: String) = viewModelScope.launch(ioDispatcher) {
+        try {
+            repository.rename(id, name)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _error.value = PlaylistError.UpdateFailed
+        }
+    }
+
+    fun delete(id: Long) = viewModelScope.launch(ioDispatcher) {
+        try {
+            repository.delete(id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _error.value = PlaylistError.UpdateFailed
+        }
+    }
 
     fun importFromUri(uri: Uri) {
+        val resolver = contentResolver ?: run {
+            _importResult.value = ImportResult.Failed
+            return
+        }
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            withContext(ioDispatcher) {
                 try {
                     val maxBytes = 2 * 1024 * 1024
                     var exceeded = false
-                    val stream = contentResolver.openInputStream(uri)
+                    val stream = resolver.openInputStream(uri)
                     if (stream == null) {
                         _importResult.value = ImportResult.Failed
                         return@withContext
@@ -113,7 +151,7 @@ class PlaylistsViewModel(
 
                     val text = bytes.toString(Charsets.UTF_8)
                     val displayName = try {
-                        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                             if (cursor.moveToFirst()) {
                                 val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                                 if (idx >= 0) cursor.getString(idx) else null
@@ -133,7 +171,7 @@ class PlaylistsViewModel(
                         return@withContext
                     }
 
-                    val library = MediaStoreSongFiles.queryAll(contentResolver)
+                    val library = MediaStoreSongFiles.queryAll(resolver)
                     val matchResult = M3uMatcher.match(parsed.entries, library)
                     val matchedSongIds = matchResult.matched.filterNotNull().distinct()
 
