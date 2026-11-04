@@ -216,14 +216,30 @@ class DownloadService : Service() {
                                 val coverFileName = if (coverJpeg != null) {
                                     runCatching { container.coverStore.save(coverJpeg) }.getOrNull()
                                 } else null
-                                container.songInfoRepository.apply(
-                                    key = key,
-                                    title = info.title,
-                                    artist = info.artist,
-                                    album = null,
-                                    coverFile = coverFileName,
-                                    mbRecordingId = null,
-                                )
+                                val existing = try {
+                                    container.songInfoRepository.get(key)
+                                } catch (_: Exception) {
+                                    null
+                                }
+                                val oldCoverFile = existing?.coverFile
+                                try {
+                                    container.songInfoRepository.apply(
+                                        key = key,
+                                        title = info.title,
+                                        artist = info.artist,
+                                        album = null,
+                                        coverFile = coverFileName,
+                                        mbRecordingId = null,
+                                    )
+                                } catch (t: Throwable) {
+                                    if (!coverFileName.isNullOrBlank()) {
+                                        runCatching { container.coverStore.delete(coverFileName) }
+                                    }
+                                    throw t
+                                }
+                                if (!oldCoverFile.isNullOrBlank() && oldCoverFile != coverFileName) {
+                                    runCatching { container.coverStore.delete(oldCoverFile) }
+                                }
                                 container.artworkLoader.evict(saved.songId)
                             }
                         } catch (t: Throwable) {
