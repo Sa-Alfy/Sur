@@ -260,6 +260,11 @@ fun DownloadScreen(
                         val onContainer = MaterialTheme.colorScheme.onErrorContainer
                         Text(stringResource(R.string.download_failed_title), style = MaterialTheme.typography.titleMedium, color = onContainer)
                         Text(state.error.userMessage(), style = MaterialTheme.typography.bodyMedium, color = onContainer)
+                        state.technical?.let {
+                            androidx.compose.foundation.text.selection.SelectionContainer {
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = onContainer)
+                            }
+                        }
                         if (urlInput.isNotBlank()) {
                             Button(onClick = { DownloadManager.reset(); startDownload() }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.download_try_again))

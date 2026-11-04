@@ -241,12 +241,12 @@ class DownloadService : Service() {
             } catch (e: DownloadException) {
                 Log.e("SurDownload", "download failed", e)
                 if (currentJob === coroutineContext[Job]) {
-                    DownloadManager.updateState(DownloadState.Error(e.error))
+                    DownloadManager.updateState(DownloadState.Error(e.error, technicalSummary(e.cause ?: e)))
                 }
             } catch (t: Throwable) {
                 Log.e("SurDownload", "download failed", t)
                 if (currentJob === coroutineContext[Job]) {
-                    DownloadManager.updateState(DownloadState.Error(DownloadError.Failed))
+                    DownloadManager.updateState(DownloadState.Error(DownloadError.Failed, technicalSummary(t)))
                 }
             } finally {
                 rawFile?.delete()
@@ -345,4 +345,13 @@ class DownloadService : Service() {
             context.startService(intent)
         }
     }
+}
+
+/** Short "Class: message" chain (max 3 causes, 300 chars) for the error card. */
+internal fun technicalSummary(t: Throwable): String {
+    val parts = generateSequence(t) { it.cause }.take(3).map { e ->
+        val detail = (e as? DownloadException)?.let { (it.error as? DownloadError.ExtractionFailed)?.detail }
+        "${e.javaClass.simpleName}: ${detail ?: e.message ?: "no message"}"
+    }.toList()
+    return parts.joinToString(" <- ").take(300)
 }

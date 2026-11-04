@@ -1,0 +1,3 @@
+- [ ] Force a download failure (airplane mode, then a bad link): the card shows the normal message plus a small selectable "Class: message" line.
+- [ ] Long-press selects it.
+- [ ] A successful download shows no extra line.

@@ -10,5 +10,6 @@ sealed interface DownloadState {
     }
     data object Saving : DownloadState
     data class Done(val songId: Long, val title: String) : DownloadState
-    data class Error(val error: DownloadError) : DownloadState
+    /** [technical] is the underlying exception (class + message), shown small on the error card. */
+    data class Error(val error: DownloadError, val technical: String? = null) : DownloadState
 }
