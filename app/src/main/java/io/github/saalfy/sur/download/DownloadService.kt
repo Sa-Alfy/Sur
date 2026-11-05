@@ -220,6 +220,9 @@ class DownloadService : Service() {
                                 if (key != null) break
                                 delay(200)
                             }
+                            if (key == null) {
+                                Log.w("SurDownload", "Song info/cover overlay skipped: could not resolve song key for songId=${saved.songId} after 5 attempts")
+                            }
                             if (key != null) {
                                 val coverFileName = if (coverJpeg != null) {
                                     runCatching { container.coverStore.save(coverJpeg) }.getOrNull()
