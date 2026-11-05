@@ -177,6 +177,7 @@ class SongDeletionCoordinatorTest {
         override suspend fun rename(id: Long, name: String) = Unit
         override suspend fun delete(id: Long) = Unit
         override suspend fun addSongs(playlistId: Long, songIds: List<Long>) = Unit
+        override suspend fun reconcile() = Unit
         override suspend fun deleteEntriesForSong(songId: Long) {
             entries.replaceAll { _, ids -> ids.filterNot { it == songId }.toMutableList() }
         }
