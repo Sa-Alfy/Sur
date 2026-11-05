@@ -171,10 +171,19 @@ class DownloadService : Service() {
                     indeterminate = false,
                 )
                 try {
+                    // Capture the launch job: currentJob is nulled by
+                    // cancelCurrentDownload() right after cancel(), so
+                    // polling currentJob here would miss the cancel.
+                    val downloadJob = coroutineContext[Job]
                     withContext(Dispatchers.IO) {
-                        Mp4Remux.remuxAudio(raw, remuxed)
+                        Mp4Remux.remuxAudio(raw, remuxed) { downloadJob?.isCancelled == true }
                     }
                 } catch (t: Throwable) {
+                    if (t is CancellationException) throw t
+                    // remuxAudio throws InterruptedException when
+                    // isCancelled() is true; treat that as cancellation,
+                    // not as a remux failure to fall back from.
+                    if (t is InterruptedException) throw CancellationException("Remux cancelled").apply { initCause(t) }
                     Log.w("SurDownload", "Mp4Remux failed, falling back to raw M4A stream", t)
                     raw.copyTo(remuxed, overwrite = true)
                 }
@@ -202,6 +211,7 @@ class DownloadService : Service() {
                         Mp4TagWriter.write(remuxed, info.title, info.artist, null, coverJpeg)
                     }
                 } catch (t: Throwable) {
+                    if (t is CancellationException) throw t
                     Log.w("SurDownload", "Mp4TagWriter.write failed", t)
                 }
 
