@@ -5,9 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
+const val SUR_DB_VERSION = 2
+
 @Database(
     entities = [PlaylistEntity::class, PlaylistEntryEntity::class],
-    version = 1,
+    version = SUR_DB_VERSION,
     exportSchema = true,
 )
 abstract class SurDatabase : RoomDatabase() {
@@ -15,6 +17,8 @@ abstract class SurDatabase : RoomDatabase() {
 
     companion object {
         fun build(context: Context): SurDatabase =
-            Room.databaseBuilder(context.applicationContext, SurDatabase::class.java, "sur.db").build()
+            Room.databaseBuilder(context.applicationContext, SurDatabase::class.java, "sur.db")
+                .addMigrations(*SurMigrations.ALL.toTypedArray())
+                .build()
     }
 }
