@@ -27,6 +27,7 @@ import io.github.saalfy.sur.downloader.DownloadException
 import io.github.saalfy.sur.downloader.audioFileName
 import io.github.saalfy.sur.downloader.mp4.Mp4Remux
 import io.github.saalfy.sur.downloader.mp4.Mp4TagWriter
+import io.github.saalfy.sur.downloader.mp4.looksLikeMp4
 import io.github.saalfy.sur.downloader.newpipe.NewPipeAudioDownloader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -170,12 +171,28 @@ class DownloadService : Service() {
                     indeterminate = false,
                 )
                 try {
+                    // Capture the launch job: currentJob is nulled by
+                    // cancelCurrentDownload() right after cancel(), so
+                    // polling currentJob here would miss the cancel.
+                    val downloadJob = coroutineContext[Job]
                     withContext(Dispatchers.IO) {
-                        Mp4Remux.remuxAudio(raw, remuxed)
+                        Mp4Remux.remuxAudio(raw, remuxed) { downloadJob?.isCancelled == true }
                     }
                 } catch (t: Throwable) {
+                    if (t is CancellationException) throw t
+                    // remuxAudio throws InterruptedException when
+                    // isCancelled() is true; treat that as cancellation,
+                    // not as a remux failure to fall back from.
+                    if (t is InterruptedException) throw CancellationException("Remux cancelled").apply { initCause(t) }
                     Log.w("SurDownload", "Mp4Remux failed, falling back to raw M4A stream", t)
                     raw.copyTo(remuxed, overwrite = true)
+                }
+
+                // 4b. Reject non-MP4 output (e.g. an HTML error page saved
+                // as .m4a). The raw fallback above is still allowed: a
+                // valid raw m4a passes this check and is saved.
+                if (!looksLikeMp4(remuxed)) {
+                    throw DownloadException(DownloadError.Failed)
                 }
 
                 // 5. Fetch thumbnail (never fails the download)
@@ -194,6 +211,7 @@ class DownloadService : Service() {
                         Mp4TagWriter.write(remuxed, info.title, info.artist, null, coverJpeg)
                     }
                 } catch (t: Throwable) {
+                    if (t is CancellationException) throw t
                     Log.w("SurDownload", "Mp4TagWriter.write failed", t)
                 }
 
@@ -212,6 +230,9 @@ class DownloadService : Service() {
                                 if (key != null) break
                                 delay(200)
                             }
+                            if (key == null) {
+                                Log.w("SurDownload", "Song info/cover overlay skipped: could not resolve song key for songId=${saved.songId} after 5 attempts")
+                            }
                             if (key != null) {
                                 val coverFileName = if (coverJpeg != null) {
                                     runCatching { container.coverStore.save(coverJpeg) }.getOrNull()
@@ -222,13 +243,17 @@ class DownloadService : Service() {
                                     null
                                 }
                                 val oldCoverFile = existing?.coverFile
+                                // If no new cover was saved (no thumbnail, or
+                                // the save failed), keep the existing cover
+                                // instead of overwriting it with null.
+                                val coverToApply = coverFileName ?: oldCoverFile
                                 try {
                                     container.songInfoRepository.apply(
                                         key = key,
                                         title = info.title,
                                         artist = info.artist,
                                         album = null,
-                                        coverFile = coverFileName,
+                                        coverFile = coverToApply,
                                         mbRecordingId = null,
                                     )
                                 } catch (t: Throwable) {
@@ -237,7 +262,9 @@ class DownloadService : Service() {
                                     }
                                     throw t
                                 }
-                                if (!oldCoverFile.isNullOrBlank() && oldCoverFile != coverFileName) {
+                                // Only delete the old cover when a new cover
+                                // file was saved and apply succeeded.
+                                if (!coverFileName.isNullOrBlank() && !oldCoverFile.isNullOrBlank() && oldCoverFile != coverFileName) {
                                     runCatching { container.coverStore.delete(oldCoverFile) }
                                 }
                                 container.artworkLoader.evict(saved.songId)
