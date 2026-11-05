@@ -27,6 +27,7 @@ import io.github.saalfy.sur.downloader.DownloadException
 import io.github.saalfy.sur.downloader.audioFileName
 import io.github.saalfy.sur.downloader.mp4.Mp4Remux
 import io.github.saalfy.sur.downloader.mp4.Mp4TagWriter
+import io.github.saalfy.sur.downloader.mp4.looksLikeMp4
 import io.github.saalfy.sur.downloader.newpipe.NewPipeAudioDownloader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -176,6 +177,13 @@ class DownloadService : Service() {
                 } catch (t: Throwable) {
                     Log.w("SurDownload", "Mp4Remux failed, falling back to raw M4A stream", t)
                     raw.copyTo(remuxed, overwrite = true)
+                }
+
+                // 4b. Reject non-MP4 output (e.g. an HTML error page saved
+                // as .m4a). The raw fallback above is still allowed: a
+                // valid raw m4a passes this check and is saved.
+                if (!looksLikeMp4(remuxed)) {
+                    throw DownloadException(DownloadError.Failed)
                 }
 
                 // 5. Fetch thumbnail (never fails the download)
