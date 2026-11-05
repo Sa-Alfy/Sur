@@ -222,13 +222,17 @@ class DownloadService : Service() {
                                     null
                                 }
                                 val oldCoverFile = existing?.coverFile
+                                // If no new cover was saved (no thumbnail, or
+                                // the save failed), keep the existing cover
+                                // instead of overwriting it with null.
+                                val coverToApply = coverFileName ?: oldCoverFile
                                 try {
                                     container.songInfoRepository.apply(
                                         key = key,
                                         title = info.title,
                                         artist = info.artist,
                                         album = null,
-                                        coverFile = coverFileName,
+                                        coverFile = coverToApply,
                                         mbRecordingId = null,
                                     )
                                 } catch (t: Throwable) {
@@ -237,7 +241,9 @@ class DownloadService : Service() {
                                     }
                                     throw t
                                 }
-                                if (!oldCoverFile.isNullOrBlank() && oldCoverFile != coverFileName) {
+                                // Only delete the old cover when a new cover
+                                // file was saved and apply succeeded.
+                                if (!coverFileName.isNullOrBlank() && !oldCoverFile.isNullOrBlank() && oldCoverFile != coverFileName) {
                                     runCatching { container.coverStore.delete(oldCoverFile) }
                                 }
                                 container.artworkLoader.evict(saved.songId)
