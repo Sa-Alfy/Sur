@@ -37,6 +37,15 @@ jobs:
       - name: Build and test
         run: ./gradlew assembleDebug test --console=plain
 
+      - name: Lint
+        run: ./gradlew lintDebug --console=plain
+
+      - name: R8 (release shrinking, no signing)
+        run: ./gradlew minifyReleaseWithR8 --console=plain
+
+      - name: Permission guard
+        run: bash scripts/check-permissions.sh
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
@@ -52,3 +61,10 @@ jobs:
           path: |
             app/build/reports/tests
             **/build/test-results
+
+      - name: Upload lint report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
