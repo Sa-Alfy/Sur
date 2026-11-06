@@ -37,6 +37,9 @@ jobs:
       - name: Build and test
         run: ./gradlew assembleDebug test --console=plain
 
+      - name: Lint
+        run: ./gradlew lintDebug --console=plain
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
@@ -52,3 +55,10 @@ jobs:
           path: |
             app/build/reports/tests
             **/build/test-results
+
+      - name: Upload lint report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
