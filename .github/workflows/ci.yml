@@ -43,6 +43,9 @@ jobs:
       - name: R8 (release shrinking, no signing)
         run: ./gradlew minifyReleaseWithR8 --console=plain
 
+      - name: Permission guard
+        run: bash scripts/check-permissions.sh
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
