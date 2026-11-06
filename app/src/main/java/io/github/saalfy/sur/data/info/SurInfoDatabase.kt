@@ -19,6 +19,11 @@ abstract class SurInfoDatabase : RoomDatabase() {
                 context.applicationContext,
                 SurInfoDatabase::class.java,
                 "sur_info.db",
-            ).build()
+            )
+                // No migrations yet (SurInfoMigrations.ALL is empty); wired so the
+                // next schema change only has to add a Migration there.
+                // Never use fallbackToDestructiveMigration.
+                .addMigrations(*SurInfoMigrations.ALL.toTypedArray())
+                .build()
     }
 }

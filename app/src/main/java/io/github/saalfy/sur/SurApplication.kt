@@ -100,7 +100,7 @@ class AppContainer(context: Context) {
 
     // Lazy so the playback service starting the process doesn't open the database.
     val playlistRepository: PlaylistRepository by lazy {
-        RoomPlaylistRepository(SurDatabase.build(context).playlistDao(), songRepository)
+        RoomPlaylistRepository(SurDatabase.build(context).playlistDao(), songRepository, songKeyResolver)
     }
 
     val downloadManager: DownloadManager get() = DownloadManager

@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import io.github.saalfy.sur.data.playlist.ReconcileAction
+import io.github.saalfy.sur.data.playlist.planReconcile
 import io.github.saalfy.sur.data.playlist.reorderPositions
 import kotlinx.coroutines.flow.Flow
 
@@ -23,6 +25,9 @@ abstract class PlaylistDao {
 
     @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY position")
     abstract fun observeEntries(playlistId: Long): Flow<List<PlaylistEntryEntity>>
+
+    @Query("SELECT * FROM playlist_entries ORDER BY playlistId, position")
+    protected abstract suspend fun getAllEntries(): List<PlaylistEntryEntity>
 
     @Insert
     abstract suspend fun insertPlaylist(playlist: PlaylistEntity): Long
@@ -54,11 +59,47 @@ abstract class PlaylistDao {
     @Query("UPDATE playlist_entries SET position = :position WHERE id = :entryId")
     protected abstract suspend fun setPosition(entryId: Long, position: Int)
 
+    @Query("UPDATE playlist_entries SET songKey = :songKey WHERE id = :entryId")
+    protected abstract suspend fun setSongKey(entryId: Long, songKey: String)
+
+    @Query("UPDATE playlist_entries SET songId = :songId, songKey = :songKey WHERE id = :entryId")
+    protected abstract suspend fun relink(entryId: Long, songId: Long, songKey: String)
+
     @Transaction
     open suspend fun deleteEntriesForSong(songId: Long) {
         val playlistIds = playlistIdsForSong(songId)
         deleteEntries(songId)
         for (playlistId in playlistIds) {
+            for ((position, entryId) in entryIdsInOrder(playlistId).withIndex()) {
+                setPosition(entryId, position)
+            }
+        }
+    }
+
+    /**
+     * Applies [planReconcile] to every entry in one transaction: backfills or
+     * refreshes stored song keys, re-links dead entries whose key matches
+     * exactly one song on the device, and drops a dead entry whose re-link
+     * target is already in the same playlist (re-numbering that playlist's
+     * positions 0..n-1, as in [deleteEntriesForSong]). Nothing else is deleted.
+     */
+    @Transaction
+    open suspend fun reconcile(keyBySongId: Map<Long, String>) {
+        val entries = getAllEntries()
+        val playlistByEntryId = entries.associate { it.id to it.playlistId }
+        val actions = planReconcile(entries, keyBySongId)
+        val droppedPlaylists = mutableSetOf<Long>()
+        for (action in actions) {
+            when (action) {
+                is ReconcileAction.SetKey -> setSongKey(action.entryId, action.key)
+                is ReconcileAction.Relink -> relink(action.entryId, action.newSongId, action.key)
+                is ReconcileAction.DropDuplicate -> {
+                    deleteEntry(action.entryId)
+                    playlistByEntryId[action.entryId]?.let { droppedPlaylists += it }
+                }
+            }
+        }
+        for (playlistId in droppedPlaylists) {
             for ((position, entryId) in entryIdsInOrder(playlistId).withIndex()) {
                 setPosition(entryId, position)
             }

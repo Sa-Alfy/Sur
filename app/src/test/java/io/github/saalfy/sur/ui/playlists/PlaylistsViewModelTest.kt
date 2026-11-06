@@ -94,6 +94,7 @@ class PlaylistsViewModelTest {
         }
 
         override suspend fun addSongs(playlistId: Long, songIds: List<Long>) = Unit
+        override suspend fun reconcile() = Unit
         override suspend fun deleteEntriesForSong(songId: Long) = Unit
         override suspend fun removeEntry(entryId: Long) = Unit
         override suspend fun moveEntry(playlistId: Long, fromEntryId: Long, toEntryId: Long) = Unit

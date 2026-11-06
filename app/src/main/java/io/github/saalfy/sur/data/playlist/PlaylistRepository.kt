@@ -21,6 +21,13 @@ interface PlaylistRepository {
     /** Appends songs in order. Songs already in the playlist are ignored. */
     suspend fun addSongs(playlistId: Long, songIds: List<Long>)
 
+    /**
+     * Backfills stored song keys and re-links entries whose song moved to a
+     * new MediaStore id. Safe to call repeatedly; it never deletes an entry
+     * except a duplicate whose re-link target is already in the same playlist.
+     */
+    suspend fun reconcile()
+
     suspend fun deleteEntriesForSong(songId: Long)
 
     suspend fun removeEntry(entryId: Long)

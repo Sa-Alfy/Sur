@@ -1,10 +1,13 @@
 package io.github.saalfy.sur.data.playlist
 
+import android.util.Log
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.data.SongRepository
 import io.github.saalfy.sur.data.db.EntryRef
 import io.github.saalfy.sur.data.db.PlaylistDao
 import io.github.saalfy.sur.data.db.PlaylistEntity
+import io.github.saalfy.sur.data.info.SongKeyResolver
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.map
 class RoomPlaylistRepository(
     private val dao: PlaylistDao,
     songRepository: SongRepository,
+    private val keyResolver: SongKeyResolver,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : PlaylistRepository {
 
@@ -36,7 +40,25 @@ class RoomPlaylistRepository(
 
     override suspend fun delete(id: Long) = dao.deletePlaylist(id)
 
-    override suspend fun addSongs(playlistId: Long, songIds: List<Long>) = dao.addSongs(playlistId, songIds)
+    override suspend fun addSongs(playlistId: Long, songIds: List<Long>) {
+        dao.addSongs(playlistId, songIds)
+        // Reconcile must never fail the add: a new song's key gets backfilled
+        // here, and any reconcile failure is just skipped.
+        runCatching { reconcile() }.onFailure { if (it is CancellationException) throw it }
+    }
+
+    override suspend fun reconcile() {
+        val keys = try {
+            keyResolver.resolveKeys()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("SurPlaylists", "Playlist reconcile skipped: could not resolve song keys", e)
+            return
+        }
+        if (keys.isEmpty()) return
+        dao.reconcile(keys)
+    }
 
     override suspend fun deleteEntriesForSong(songId: Long) = dao.deleteEntriesForSong(songId)
 
