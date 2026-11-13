@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.IntentSender
 import android.os.Build
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import io.github.saalfy.sur.ui.hasPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,6 +62,7 @@ class MediaStoreSongDeleter(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun deleteWithRecoverableAction(songId: Long, uri: android.net.Uri): DeleteAttempt {
         return try {
             deleteAndVerify(uri)
