@@ -12,7 +12,7 @@ data class PlaylistEntity(
     val createdAt: Long,
 )
 
-/** Stores only the MediaStore song id; metadata always comes from the SongRepository. */
+/** Stores the MediaStore song id plus its stable key, so an entry can be re-linked when the id changes. Metadata always comes from the SongRepository. */
 @Entity(
     tableName = "playlist_entries",
     foreignKeys = [
@@ -33,6 +33,8 @@ data class PlaylistEntryEntity(
     val playlistId: Long,
     val songId: Long,
     val position: Int,
+    /** Stable SongInfoKey for [songId], or null until the next reconcile fills it in. */
+    val songKey: String? = null,
 )
 
 data class EntryRef(val playlistId: Long, val songId: Long)

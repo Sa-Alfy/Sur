@@ -3,6 +3,7 @@ package io.github.saalfy.sur.ui.playlists
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
@@ -63,6 +64,20 @@ class PlaylistsViewModel(
 
     private val _error = MutableStateFlow<PlaylistError?>(null)
     val error: StateFlow<PlaylistError?> = _error.asStateFlow()
+
+    init {
+        // Backfill song keys and re-link entries whose song moved to a new
+        // MediaStore id. A failure here must never break the screen.
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                repository.reconcile()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("SurPlaylists", "Playlist reconcile skipped", e)
+            }
+        }
+    }
 
     /** [playlists] filtered by name with the debounced query; null while loading. */
     @OptIn(FlowPreview::class)
