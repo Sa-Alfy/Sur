@@ -16,7 +16,5 @@
 - Stop at the end of each phase and wait.
 
 ## Recent phases
-- **10A** (playlist import/export): SDK<29 DATA fallback in MediaStoreSongFiles; artist-less title matching in M3uMatcher; scrollable not-found dialog; unit tests.
-- **10B** (Find cover & details): `textSimilarity` + `isConfident` in ArtistSimilarity/CandidateRanker; junk candidate filter (similarity < 0.5); auto-preselect + cover load only when confident; `NoConfident` state shows tappable list without preselected card.
-- **11A**: Find info never deletes a cover without a replacement; Cover only keeps earlier text; Now Playing button no longer flashes; README storage permission; About scrolls.
-- **12A**: Downloader MP4 tags can be re-edited while preserving unknown items, with one-time original metadata backup and restore.
+- Latest release: v0.3.5. Playback, playlists, search, downloader with UI, M3U export/import, Find info, song deletion, CI (build, lint, R8, permission guard) are done.
+- In progress: Room migration + stable playlist keys (PR #2, not merged). Then phone tests on the A1k, then v1.0.0.
