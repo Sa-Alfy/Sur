@@ -13,7 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -31,6 +34,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
     }
+    var showLicenses by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.about_title, version)) },
@@ -53,6 +57,42 @@ fun AboutDialog(onDismiss: () -> Unit) {
 
                 LinkButton(stringResource(R.string.about_source)) { context.openUrl(SOURCE_URL) }
                 LinkButton(stringResource(R.string.about_license)) { context.openUrl(LICENSE_URL) }
+                TextButton(onClick = { showLicenses = true }) { Text(stringResource(R.string.about_licenses)) }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
+    )
+    if (showLicenses) {
+        LicensesDialog(onDismiss = { showLicenses = false })
+    }
+}
+
+/** Scrollable list of the third-party libraries used by Sur and their licenses. */
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.about_licenses)) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                for (license in openSourceLicenses) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(license.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            license.license,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            license.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
