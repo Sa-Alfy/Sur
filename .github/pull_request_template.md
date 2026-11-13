@@ -18,4 +18,4 @@ Everything not compiled, run or tested on a device:
 - [ ] Release or signing
 
 ## Phone checklist
-Link to the docs/ checklist and whether it was run on the A1k:
+Link to the docs/testing/ checklist and whether it was run on the A1k:
