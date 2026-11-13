@@ -401,7 +401,6 @@ class FindInfoViewModel(
     }
 
     override fun onCleared() {
-        super.onCleared()
         cancelWork()
     }
 

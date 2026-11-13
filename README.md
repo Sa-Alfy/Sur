@@ -68,7 +68,7 @@ The debug APK is written to `app/build/outputs/apk/debug/`. Release builds (`./g
 ./gradlew testDebugUnitTest
 ```
 
-Manual device test checklists live in [`docs/`](docs/).
+Manual device test checklists live in [`docs/testing/`](docs/testing/).
 
 ## Disclaimer
 
