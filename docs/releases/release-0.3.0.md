@@ -27,4 +27,4 @@ Sur v0.3.0 introduces a comprehensive redesign of the player experience, visual 
 ## Verification & Testing
 - Unit test suite: 62 tests passing (`./gradlew testDebugUnitTest`).
 - Release minification: R8 / ProGuard verified (`./gradlew assembleRelease`).
-- Manual test checklist: see [`docs/phase6b-test.md`](phase6b-test.md).
+- Manual test checklist: see [`docs/testing/phase6b-test.md`](../testing/phase6b-test.md).
