@@ -90,6 +90,7 @@
     <string name="about_developer_github">GitHub: Sa-Alfy</string>
     <string name="about_source">Source code on GitHub</string>
     <string name="about_license">License: GPL-3.0</string>
+    <string name="about_licenses">Open-source licenses</string>
     <string name="close">Close</string>
 
     <string name="download_busy">A download is already running.</string>
