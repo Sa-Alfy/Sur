@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **5 complete (device run pending) → next: Phase 6 (Core playback and library)**.
+Updated: 2026-11-19. Current phase: **5 complete → next: Phase 6 (Core playback and library)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -33,7 +33,7 @@ Updated: 2026-11-19. Current phase: **5 complete (device run pending) → next: 
 | 2 | PASS | 3d2e9cc | Download lifecycle, details below |
 | 3 | PASS | d04c497 | Deletion and artwork recovery, details below |
 | 4 | PASS | f759ee0 | Playlist identity, details below |
-| 5 | PASS (code) / BLOCKED (device run) | (see git log) | Migration safety, details below |
+| 5 | PASS | bbcada7, f735ff1, b9db57d | Migration safety, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -130,8 +130,17 @@ Updated: 2026-11-19. Current phase: **5 complete (device run pending) → next: 
   migrated columns, no destructive fallback in `src/main`, 2→3 versions.
 - Results: `assembleDebugAndroidTest` PASS (compiles). `testDebugUnitTest` 324 pass / 0 fail /
   2 skipped. `assembleDebug`, `lintDebug` PASS.
-  `connectedDebugAndroidTest`: BLOCKED. adb is at D:\tools\android-sdk\platform-tools but no
-  device is attached and no emulator/system image is installed.
+  `connectedDebugAndroidTest`: no local device (no cable for the A1k; Android 9 has no
+  wireless debugging). Runs in CI instead: new `instrumented` job in `.github/workflows/ci.yml`
+  boots an API 28 x86_64 emulator (same OS as the A1k) on every push/PR.
+  - First CI run (f735ff1): PlaylistDaoIntegrationTest 9/9 PASS; SurMigrationTest 3/3 FAIL with
+    `AbstractMethodError` in kotlinx.serialization (room-migration needs json 1.8.1, app had
+    core 1.7.3 from lifecycle; test APK must use app versions).
+  - Fix b9db57d: constraint `kotlinx-serialization-core` 1.8.1 in the app. Local unit tests,
+    debug build, test APK, lint and `minifyReleaseWithR8` pass.
+  - CI run 44511835545 (b9db57d): build PASS, instrumented PASS:
+    PlaylistDaoIntegrationTest 9/9, SurMigrationTest 3/3 (1→2, 2→3, 1→3 via Room + DAO).
+  - Still unverified: the upgrade on the real A1k with a real v0.3.5 database.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
