@@ -1,0 +1,104 @@
+name: Release
+
+# Builds the signed release APK and attaches it to a GitHub release.
+# Runs when a v* tag is pushed, or by hand for an existing tag (Actions -> Release -> Run workflow).
+#
+# Needs these repository secrets (Settings -> Secrets and variables -> Actions):
+#   SUR_RELEASE_KEYSTORE_BASE64   base64 of the .jks file
+#   SUR_RELEASE_STORE_PASSWORD
+#   SUR_RELEASE_KEY_ALIAS
+#   SUR_RELEASE_KEY_PASSWORD
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and release (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check signing secrets
+        env:
+          KS: ${{ secrets.SUR_RELEASE_KEYSTORE_BASE64 }}
+          SP: ${{ secrets.SUR_RELEASE_STORE_PASSWORD }}
+          KA: ${{ secrets.SUR_RELEASE_KEY_ALIAS }}
+          KP: ${{ secrets.SUR_RELEASE_KEY_PASSWORD }}
+        run: |
+          missing=""
+          [ -n "$KS" ] || missing="$missing SUR_RELEASE_KEYSTORE_BASE64"
+          [ -n "$SP" ] || missing="$missing SUR_RELEASE_STORE_PASSWORD"
+          [ -n "$KA" ] || missing="$missing SUR_RELEASE_KEY_ALIAS"
+          [ -n "$KP" ] || missing="$missing SUR_RELEASE_KEY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Restore keystore
+        env:
+          KS: ${{ secrets.SUR_RELEASE_KEYSTORE_BASE64 }}
+        run: echo "$KS" | base64 --decode > "$RUNNER_TEMP/sur-release.jks"
+
+      - name: Build signed release APK
+        env:
+          ORG_GRADLE_PROJECT_SUR_RELEASE_STORE_FILE: ${{ runner.temp }}/sur-release.jks
+          ORG_GRADLE_PROJECT_SUR_RELEASE_STORE_PASSWORD: ${{ secrets.SUR_RELEASE_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_SUR_RELEASE_KEY_ALIAS: ${{ secrets.SUR_RELEASE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_SUR_RELEASE_KEY_PASSWORD: ${{ secrets.SUR_RELEASE_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --console=plain
+          cp app/build/outputs/apk/release/app-release.apk "Sur-$TAG.apk"
+
+      - name: Verify signature
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$apksigner" verify --print-certs "Sur-$TAG.apk" | grep -E "SHA-256" | tee cert.txt
+          sha256sum "Sur-$TAG.apk" | tee "Sur-$TAG.apk.sha256"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sur-release.jks"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/releases/release-${TAG#v}.md"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --clobber
+          elif [ -f "$notes" ]; then
+            gh release create "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --title "Sur $TAG" --notes-file "$notes"
+          else
+            gh release create "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --title "Sur $TAG" --generate-notes
+          fi

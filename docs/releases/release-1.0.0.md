@@ -38,4 +38,4 @@ Requires JDK 17 and the Android SDK (compileSdk 37).
 ./gradlew assembleRelease               # needs SUR_RELEASE_STORE_FILE, _STORE_PASSWORD,
                                         # _KEY_ALIAS, _KEY_PASSWORD Gradle properties
 ```
-Release builds refuse to package without Sur's release key. On Windows, if Gradle fails with "Unable to establish loopback connection", set `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=<short dir>`.
+Release builds refuse to package without Sur's release key. GitHub releases are built by `.github/workflows/release.yml` (see `docs/ci.md`). On Windows, if Gradle fails with "Unable to establish loopback connection", set `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=<short dir> -Djava.net.preferIPv4Stack=true`.

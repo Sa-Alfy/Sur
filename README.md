@@ -43,7 +43,7 @@ Android 8.0 (API 26) or newer.
 
 Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
-- **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked when you save a download or delete a song.
+- **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked together with audio access on first launch (Android 8-9 need it to save downloads and delete songs).
 - **Notifications** (Android 13+, optional): to show playback controls and download progress.
 - **Network access**: used only for downloads you start (youtube.com, googlevideo.com, ytimg.com) and for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org). Sur makes no network requests on its own.
 
@@ -62,13 +62,31 @@ Requires JDK 17 and the Android SDK (platform 37).
 ./gradlew assembleDebug
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/`. Release builds (`./gradlew assembleRelease`) are minified, and are signed only when `SUR_RELEASE_STORE_FILE`, `SUR_RELEASE_STORE_PASSWORD`, `SUR_RELEASE_KEY_ALIAS` and `SUR_RELEASE_KEY_PASSWORD` are set as Gradle properties (e.g. in `~/.gradle/gradle.properties`). Otherwise they're unsigned. Run the unit tests with:
+The debug APK is written to `app/build/outputs/apk/debug/`.
+
+Release APK (minified, signed):
 
 ```bash
-./gradlew testDebugUnitTest
+./gradlew assembleRelease   # app/build/outputs/apk/release/app-release.apk
 ```
 
-Manual device test checklists live in [`docs/testing/`](docs/testing/).
+It needs `SUR_RELEASE_STORE_FILE`, `SUR_RELEASE_STORE_PASSWORD`, `SUR_RELEASE_KEY_ALIAS` and `SUR_RELEASE_KEY_PASSWORD` as Gradle properties (e.g. in `~/.gradle/gradle.properties`). Without them the release build stops with an error instead of producing an unsigned or debug-signed APK that couldn't update existing installs.
+
+Tests:
+
+```bash
+./gradlew testDebugUnitTest          # JVM unit tests
+./gradlew connectedDebugAndroidTest  # Room migration + playlist database tests (device or emulator)
+```
+
+On Windows, if Gradle fails with "Unable to establish loopback connection" or times out downloading itself, set `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=<short dir> -Djava.net.preferIPv4Stack=true`.
+
+### CI and releases
+
+- **CI** (`.github/workflows/ci.yml`): every push and pull request builds, runs unit tests, lint, R8 and a permission check, and runs the instrumented tests on an Android 9 emulator. See [`docs/ci.md`](docs/ci.md).
+- **Releases** (`.github/workflows/release.yml`): pushing a `v*` tag (or running the workflow by hand for an existing tag) builds the signed APK on GitHub and attaches `Sur-<tag>.apk` and its SHA-256 to the GitHub release, with notes from `docs/releases/`. The signing key comes from repository secrets; see [`docs/ci.md`](docs/ci.md#release-workflow).
+
+Manual device test checklists live in [`docs/testing/`](docs/testing/); the v1.0.0 phone checklist is in [`docs/V1_EXECUTION_STATE.md`](docs/V1_EXECUTION_STATE.md).
 
 ## Disclaimer
 

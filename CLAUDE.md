@@ -18,4 +18,5 @@
 ## Recent phases
 - v1.0.0 prepared on main (V1 phases 0-10, see docs/V1_EXECUTION_STATE.md): metadata precedence, download ownership/retry/resume, safe deletion + orphan cover sweep, playlist identity (DB v3: volume, duration, original id), migration tests in CI on an API 28 emulator.
 - Windows Gradle needs JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=D:\tmpsock -Djava.net.preferIPv4Stack=true".
-- Next: signed v1.0.0 APK built by the maintainer, then phone tests on the A1k (docs/V1_EXECUTION_STATE.md "Unverified on device").
+- Release key lives at D:/tools/keys/sur-release.jks (user ~/.gradle/gradle.properties); `./gradlew assembleRelease` signs locally. GitHub releases: .github/workflows/release.yml (repo secrets SUR_RELEASE_*).
+- Next: phone tests on the A1k (docs/V1_EXECUTION_STATE.md phone checklist).

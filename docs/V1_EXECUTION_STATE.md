@@ -241,7 +241,9 @@ Updated: 2026-11-19. Current phase: **10 complete. v1.0.0 prepared on main; sign
 ## Phase 10: Final V1 validation
 Decisions (maintainer, 2026-11-19): merge `licenses-screen` (PR #12), merge the three Dependabot
 PRs (#9 Compose plugin 2.4.21, #10 Gradle wrapper 9.9.0, #11 OkHttp 5.5.1), bump to 1.0.0
-(versionCode 9) and tag `v1.0.0`; the signed APK is built by the maintainer.
+(versionCode 9) and tag `v1.0.0`. Correction: the release key IS on this machine (user
+`~/.gradle/gradle.properties`); it was not checked during the phases. The signed APK was built
+locally after Phase 10, and `.github/workflows/release.yml` builds it on GitHub from repo secrets.
 
 ### Final test report (Windows, JDK 17, Gradle 9.9.0, after all merges and the version bump)
 | Command | Result |
@@ -255,7 +257,7 @@ PRs (#9 Compose plugin 2.4.21, #10 Gradle wrapper 9.9.0, #11 OkHttp 5.5.1), bump
 | `scripts/check-permissions.sh` | PASS (11 permissions, all allowlisted) |
 | `connectedDebugAndroidTest` | PASS in CI on API 28 emulator: PlaylistDaoIntegrationTest 9/9, SurMigrationTest 3/3 (see final CI run below) |
 | Real-network YouTube download (`-Psur.networkTests=true`) | PASS on 2026-11-19 (Phase 9) |
-| `assembleRelease` (signed) | NOT RUN: release key is not on this machine (by design) |
+| `assembleRelease` (signed) | PASS (after Phase 10): signed locally with D:/tools/keys/sur-release.jks; apksigner certificate SHA-256 dad26ae7…756f42 (matches README); versionName 1.0.0, versionCode 9; 3.5 MB |
 | Device journeys on the A1k | NOT RUN: no cable; see checklist |
 
 Windows note: Gradle 9.9.0's wrapper download timed out over IPv6;
@@ -273,7 +275,7 @@ Windows note: Gradle 9.9.0's wrapper download timed out over IPv6;
 | Unit tests pass | DONE (342) |
 | Instrumented tests pass | DONE (12/12, emulator in CI) |
 | Debug build / lint / R8 | DONE |
-| Signed release build | PENDING (maintainer, needs release key) |
+| Signed release build | DONE locally; GitHub `release.yml` added, needs repo secrets |
 | Important journeys on a real device | PENDING (A1k: list below) |
 | Docs and release notes | DONE (`docs/releases/release-1.0.0.md`, README, CLAUDE.md) |
 | Single active branch `main`, clean tree, local = remote | see final git state below |
