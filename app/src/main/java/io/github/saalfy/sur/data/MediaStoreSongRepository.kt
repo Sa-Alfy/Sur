@@ -5,6 +5,8 @@ import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,11 +17,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 
@@ -43,11 +44,11 @@ class MediaStoreSongRepository(
     /** Shared so the Songs tab, playlist counts and playlist details run one query and one observer. */
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     override val songs: Flow<List<Song>> =
-        merge(flowOf(Unit), manualRefresh, libraryChanges().debounce(LIBRARY_CHANGE_DEBOUNCE_MS))
-            .mapLatest { querySongs() }
+        libraryQueries(
+            triggers = merge(flowOf(Unit), manualRefresh, libraryChanges().debounce(LIBRARY_CHANGE_DEBOUNCE_MS)),
+            query = ::querySongs,
+        )
             .flowOn(ioDispatcher)
-            // Permission revoked mid-session: show nothing rather than crash the shared scope.
-            .catch { if (it is SecurityException) emit(emptyList()) else throw it }
             .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     override suspend fun refresh() {
@@ -118,4 +119,34 @@ class MediaStoreSongRepository(
 
     private fun String?.known(): String? =
         this?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING }
+}
+
+/**
+ * Runs [query] for every trigger, never letting one failed query end the stream.
+ *
+ * Before, a MediaStore failure other than SecurityException (e.g. CursorWindowAllocationException
+ * under memory pressure, SQLiteException during a media scan) was rethrown inside the app-wide
+ * scope and crashed the app, and a SecurityException completed the shared flow so later
+ * refreshes did nothing.
+ * Now: SecurityException → empty list (no access); any other error → keep the last good list
+ * (nothing emitted) and wait for the next trigger. Cancellation still propagates.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+internal fun libraryQueries(
+    triggers: Flow<Unit>,
+    query: () -> List<Song>,
+    onError: (Throwable) -> Unit = { e -> runCatching { Log.w("SurLibrary", "Song query failed", e) } },
+): Flow<List<Song>> = triggers.transformLatest {
+    val result = try {
+        query()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: SecurityException) {
+        onError(e)
+        emptyList()
+    } catch (e: Exception) {
+        onError(e)
+        null
+    }
+    if (result != null) emit(result)
 }

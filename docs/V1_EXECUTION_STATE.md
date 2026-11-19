@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **5 complete → next: Phase 6 (Core playback and library)**.
+Updated: 2026-11-19. Current phase: **6 complete → next: Phase 7 (Downloads and metadata experience)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -34,6 +34,7 @@ Updated: 2026-11-19. Current phase: **5 complete → next: Phase 6 (Core playbac
 | 3 | PASS | d04c497 | Deletion and artwork recovery, details below |
 | 4 | PASS | f759ee0 | Playlist identity, details below |
 | 5 | PASS | bbcada7, f735ff1, b9db57d | Migration safety, details below |
+| 6 | PASS (code) | (see git log) | Core playback and library, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -71,9 +72,10 @@ Updated: 2026-11-19. Current phase: **5 complete → next: Phase 6 (Core playbac
   link that stops without `startForeground` may hit the O+ foreground-start timeout (edge case,
   only via external intents). Neither verified on a device.
 ## Phase 3: Deletion and artwork recovery
-- R2-08 (real bug, hits Android 8-9 incl. the A1k): `PermissionRequired` set
-  `permissionSongId` but never launched the permission request, so delete silently did
-  nothing. `SongsScreen` now requests WRITE_EXTERNAL_STORAGE and retries on grant;
+- R2-08 (latent bug; corrected in Phase 6): `PermissionRequired` set `permissionSongId` but
+  never launched the permission request, so delete would silently do nothing. In practice the
+  startup `AudioPermissionGate` already requests WRITE_EXTERNAL_STORAGE on Android 8-9, so this
+  path is normally unreachable on the A1k; the fix is defensive. `SongsScreen` now requests WRITE_EXTERNAL_STORAGE and retries on grant;
   `permissionSongId` is `rememberSaveable` (survives rotation). A confirmation with no system
   IntentSender now shows "delete failed" instead of waiting forever.
 - R2-08: `SongDeletionCoordinator.begin/finish` catch deleter/platform errors (e.g.
@@ -141,6 +143,26 @@ Updated: 2026-11-19. Current phase: **5 complete → next: Phase 6 (Core playbac
   - CI run 44511835545 (b9db57d): build PASS, instrumented PASS:
     PlaylistDaoIntegrationTest 9/9, SurMigrationTest 3/3 (1→2, 2→3, 1→3 via Room + DAO).
   - Still unverified: the upgrade on the real A1k with a real v0.3.5 database.
+## Phase 6: Core playback and library
+- Audited (code inspection, no defect found): `PlaybackService` (ExoPlayer with audio focus,
+  becoming-noisy pause, local wake lock, Media3 notification + lock-screen session, mediaPlayback
+  FGS type), skip-unplayable-items listener, `PlayerConnection` lifecycle (controller released
+  in onStop so the service can stop), shuffle / repeat / seek / queue in `PlayerUiState`,
+  search (`filterSongs`, title/artist/album, case-insensitive), A-Z sort, `AudioPermissionGate`
+  (asks READ_MEDIA_AUDIO 13+, READ_EXTERNAL_STORAGE 10-12, WRITE_EXTERNAL_STORAGE 8-9; re-checks
+  on resume; permanent-denial path opens Settings), delete → queue removal.
+- Fixed (confirmed crash path): `MediaStoreSongRepository.songs` rethrew any non-Security
+  query exception (e.g. CursorWindowAllocationException under memory pressure, SQLiteException
+  during a media scan) inside the app-wide scope → app crash; a SecurityException completed the
+  shared flow so refresh stopped working. New `libraryQueries()` keeps the last good list on
+  error, emits empty on SecurityException, and keeps listening. `LibraryQueriesTest` (3).
+- Results: `testDebugUnitTest` 327 pass / 0 fail / 2 skipped. `assembleDebug`, `lintDebug` PASS.
+- Known limitations (not V1 blockers, not changed): the queue is not persisted, so if Android
+  kills the process while paused (likely on the A1k) the queue is gone on next launch;
+  `onPlaybackResumption` (Android 13+ system resume card) is not implemented.
+- Unverified (needs the phone): background playback with screen off, notification and
+  lock-screen controls, headphone unplug, audio focus with calls/other apps, ColorOS battery
+  killing the service, library refresh after adding files.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
