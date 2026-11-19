@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **3 complete → next: Phase 4 (Playlist identity)**.
+Updated: 2026-11-19. Current phase: **4 complete → next: Phase 5 (Database migration safety)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -34,7 +34,8 @@ Updated: 2026-11-19. Current phase: **3 complete → next: Phase 4 (Playlist ide
 | 0 | PASS | a817177 | Checkpoint of Batch 2 + V1 docs |
 | 1 | PASS | f33d325 | Metadata integrity, details below |
 | 2 | PASS | 3d2e9cc | Download lifecycle, details below |
-| 3 | PASS | (see git log) | Deletion and artwork recovery, details below |
+| 3 | PASS | d04c497 | Deletion and artwork recovery, details below |
+| 4 | PASS | (see git log) | Playlist identity, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -94,6 +95,27 @@ Updated: 2026-11-19. Current phase: **3 complete → next: Phase 4 (Playlist ide
   `pendingDelete` (holds an IntentSender) is lost; the file is deleted by the system but the
   playlist/overlay cleanup is skipped. The orphan sweep covers the cover file; playlist entries
   fall to Phase 4 reconciliation. Unverified on device.
+## Phase 4: Playlist identity
+- Schema v3 (`MIGRATION_2_3`, additive `ALTER TABLE ADD COLUMN` only): `playlist_entries`
+  gains `songVolume`, `songDurationMs`, `relinkedFromSongId`. `3.json` exported.
+  Released v0.3.5 is schema v1; upgrade path is 1→2→3.
+- R1-02: `SongKeyResolver.resolveIdentities()` returns key + volume + duration. Android 10+:
+  `VOLUME_NAME`; Android 8-9: derived from `DATA` (`volumeFromAbsolute`, same names as 10+).
+  `SongInfoKey` (overlay DB key) is unchanged, so no song-info migration was needed.
+- R1-03: a dead entry is re-linked only if exactly one song has the same key, a compatible
+  volume (equal, or unknown on either side) and a duration within 1 s. A missing stored or
+  candidate duration, or 0 / 2+ candidates, leaves the entry unresolved.
+- R1-04: `relinkedFromSongId` keeps the first pre-relink song id (`COALESCE` in the DAO).
+- R2-18: verified already fixed in Batch 2 (keys resolved on every combine, no cache).
+- R1-06: real DAO writes are only testable with a device/emulator (androidTest). Planner tests
+  cover determinism and idempotence. `PlaylistDaoIntegrationTest` still uses the old
+  `reconcile(Map<Long,String>)` API and does not compile; it is fixed in Phase 5. NOT RUN.
+- Tests: `PlaylistReconcileTest` rewritten (17), `SongKeyResolverTest` +2. Full
+  `testDebugUnitTest`: 320 pass / 0 fail / 2 skipped. `assembleDebug`, `lintDebug`: PASS.
+- Remaining identity limits: a different song with the same file name, volume and length
+  (within 1 s) could still be re-linked. Entries that were dead before the upgrade have no
+  stored duration and stay unresolved (shown as missing, not deleted). Android 9 → 10 OS
+  upgrade relies on derived volume names matching `VOLUME_NAME`; unverified.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real

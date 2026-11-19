@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import io.github.saalfy.sur.data.info.SongIdentity
 import io.github.saalfy.sur.data.playlist.ReconcileAction
 import io.github.saalfy.sur.data.playlist.planReconcile
 import io.github.saalfy.sur.data.playlist.reorderPositions
@@ -59,11 +60,16 @@ abstract class PlaylistDao {
     @Query("UPDATE playlist_entries SET position = :position WHERE id = :entryId")
     protected abstract suspend fun setPosition(entryId: Long, position: Int)
 
-    @Query("UPDATE playlist_entries SET songKey = :songKey WHERE id = :entryId")
-    protected abstract suspend fun setSongKey(entryId: Long, songKey: String)
+    @Query("UPDATE playlist_entries SET songKey = :songKey, songVolume = :volume, songDurationMs = :durationMs WHERE id = :entryId")
+    protected abstract suspend fun setIdentity(entryId: Long, songKey: String, volume: String?, durationMs: Long?)
 
-    @Query("UPDATE playlist_entries SET songId = :songId, songKey = :songKey WHERE id = :entryId")
-    protected abstract suspend fun relink(entryId: Long, songId: Long, songKey: String)
+    /** Keeps the first pre-relink song id (R1-04): later re-links do not overwrite it. */
+    @Query(
+        "UPDATE playlist_entries SET songId = :songId, songKey = :songKey, songVolume = :volume, " +
+            "songDurationMs = :durationMs, relinkedFromSongId = COALESCE(relinkedFromSongId, :fromSongId) " +
+            "WHERE id = :entryId",
+    )
+    protected abstract suspend fun relink(entryId: Long, songId: Long, songKey: String, volume: String?, durationMs: Long?, fromSongId: Long)
 
     @Transaction
     open suspend fun deleteEntriesForSong(songId: Long) {
@@ -84,15 +90,23 @@ abstract class PlaylistDao {
      * positions 0..n-1, as in [deleteEntriesForSong]). Nothing else is deleted.
      */
     @Transaction
-    open suspend fun reconcile(keyBySongId: Map<Long, String>) {
+    open suspend fun reconcile(identities: Map<Long, SongIdentity>) {
         val entries = getAllEntries()
         val playlistByEntryId = entries.associate { it.id to it.playlistId }
-        val actions = planReconcile(entries, keyBySongId)
+        val actions = planReconcile(entries, identities)
         val droppedPlaylists = mutableSetOf<Long>()
         for (action in actions) {
             when (action) {
-                is ReconcileAction.SetKey -> setSongKey(action.entryId, action.key)
-                is ReconcileAction.Relink -> relink(action.entryId, action.newSongId, action.key)
+                is ReconcileAction.SetIdentity ->
+                    setIdentity(action.entryId, action.identity.key, action.identity.volume, action.identity.durationMs)
+                is ReconcileAction.Relink -> relink(
+                    action.entryId,
+                    action.newSongId,
+                    action.identity.key,
+                    action.identity.volume,
+                    action.identity.durationMs,
+                    action.fromSongId,
+                )
                 is ReconcileAction.DropDuplicate -> {
                     deleteEntry(action.entryId)
                     playlistByEntryId[action.entryId]?.let { droppedPlaylists += it }

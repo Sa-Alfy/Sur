@@ -71,4 +71,22 @@ class SongKeyResolverTest {
         assertEquals("Music/SongB.m4a", resolver.resolveKey(99L))
         org.junit.Assert.assertNull(resolver.resolveKey(100L))
     }
+
+    @Test
+    fun volumeFromAbsolute_matchesAndroid10VolumeNames() {
+        assertEquals(PRIMARY_VOLUME, volumeFromAbsolute("/storage/emulated/0/Music/a.mp3"))
+        assertEquals(PRIMARY_VOLUME, volumeFromAbsolute("/sdcard/Music/a.mp3"))
+        assertEquals(PRIMARY_VOLUME, volumeFromAbsolute("/mnt/sdcard/Music/a.mp3"))
+        assertEquals("1234-abcd", volumeFromAbsolute("/storage/1234-ABCD/Music/a.mp3"))
+        org.junit.Assert.assertNull(volumeFromAbsolute("/storage/self/primary/Music/a.mp3"))
+        org.junit.Assert.assertNull(volumeFromAbsolute("/data/local/a.mp3"))
+    }
+
+    @Test
+    fun sameRelativePathOnTwoVolumes_sameKeyButDifferentVolume() {
+        val a = "/storage/emulated/0/Music/a.mp3"
+        val b = "/storage/1234-ABCD/Music/a.mp3"
+        assertEquals(relativeFromAbsolute(a), relativeFromAbsolute(b))
+        assertNotEquals(volumeFromAbsolute(a), volumeFromAbsolute(b))
+    }
 }

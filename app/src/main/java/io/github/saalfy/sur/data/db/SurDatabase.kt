@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-const val SUR_DB_VERSION = 2
+const val SUR_DB_VERSION = 3
 
 @Database(
     entities = [PlaylistEntity::class, PlaylistEntryEntity::class],

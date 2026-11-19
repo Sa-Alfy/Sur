@@ -49,7 +49,7 @@ class RoomPlaylistRepository(
 
     override suspend fun reconcile() {
         val keys = try {
-            keyResolver.resolveKeys()
+            keyResolver.resolveIdentities()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

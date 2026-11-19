@@ -35,6 +35,12 @@ data class PlaylistEntryEntity(
     val position: Int,
     /** Stable SongInfoKey for [songId], or null until the next reconcile fills it in. */
     val songKey: String? = null,
+    /** R1-02: storage volume of the song when its key was stored (null = unknown). */
+    val songVolume: String? = null,
+    /** R1-03: duration fingerprint; a dead entry is only re-linked to a song of the same length. */
+    val songDurationMs: Long? = null,
+    /** R1-04: the first song id this entry pointed at before any re-link, kept for recovery. */
+    val relinkedFromSongId: Long? = null,
 )
 
 data class EntryRef(val playlistId: Long, val songId: Long)
