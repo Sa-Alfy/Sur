@@ -29,6 +29,7 @@ import io.github.saalfy.sur.downloader.mp4.Mp4Remux
 import io.github.saalfy.sur.downloader.mp4.Mp4TagWriter
 import io.github.saalfy.sur.downloader.mp4.looksLikeMp4
 import io.github.saalfy.sur.downloader.newpipe.NewPipeAudioDownloader
+import io.github.saalfy.sur.data.info.SongInfoStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -195,12 +196,15 @@ class DownloadService : Service() {
                     throw DownloadException(DownloadError.Failed)
                 }
 
-                // 5. Fetch thumbnail (never fails the download)
+                // 5. Fetch thumbnail (never fails the download, but must not swallow CE)
                 val coverJpeg = try {
                     withContext(Dispatchers.IO) {
                         downloader.fetchThumbnail(info)
                     }
                 } catch (t: Throwable) {
+                    // R2-13: CancellationException must propagate so the coroutine
+                    // can reach the CE handler and not report Done after cancel.
+                    if (t is CancellationException) throw t
                     Log.w("SurDownload", "fetchThumbnail threw unexpectedly", t)
                     null
                 }
@@ -239,7 +243,9 @@ class DownloadService : Service() {
                                 } else null
                                 val existing = try {
                                     container.songInfoRepository.get(key)
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    // R2-13: rethrow CE so the outer handler can reset state.
+                                    if (e is CancellationException) throw e
                                     null
                                 }
                                 val oldCoverFile = existing?.coverFile
@@ -247,14 +253,23 @@ class DownloadService : Service() {
                                 // the save failed), keep the existing cover
                                 // instead of overwriting it with null.
                                 val coverToApply = coverFileName ?: oldCoverFile
+                                // R2-01: Respect the precedence rule
+                                //   User Explicit Override > External Provider Metadata
+                                // If the user has already APPLIED metadata for this key, preserve
+                                // non-blank fields rather than overwriting with download values.
+                                val isApplied = existing?.status == SongInfoStatus.APPLIED
+                                val titleToApply = if (isApplied && !existing.title.isNullOrBlank()) existing.title else info.title
+                                val artistToApply = if (isApplied && !existing.artist.isNullOrBlank()) existing.artist else info.artist
+                                val albumToApply = if (isApplied) existing.album else null
+                                val mbIdToApply = if (isApplied) existing.mbRecordingId else null
                                 try {
                                     container.songInfoRepository.apply(
                                         key = key,
-                                        title = info.title,
-                                        artist = info.artist,
-                                        album = null,
+                                        title = titleToApply,
+                                        artist = artistToApply,
+                                        album = albumToApply,
                                         coverFile = coverToApply,
-                                        mbRecordingId = null,
+                                        mbRecordingId = mbIdToApply,
                                     )
                                 } catch (t: Throwable) {
                                     if (!coverFileName.isNullOrBlank()) {
@@ -270,6 +285,10 @@ class DownloadService : Service() {
                                 container.artworkLoader.evict(saved.songId)
                             }
                         } catch (t: Throwable) {
+                            // R2-03: CE must not be swallowed here — the outer CE handler resets
+                            // DownloadManager state; swallowing it would let Done be reported
+                            // after a cancellation.
+                            if (t is CancellationException) throw t
                             Log.w("SurDownload", "Failed to apply song info overlay for download", t)
                         }
                     }

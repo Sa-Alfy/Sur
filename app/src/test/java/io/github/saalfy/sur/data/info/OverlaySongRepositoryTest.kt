@@ -3,10 +3,13 @@ package io.github.saalfy.sur.data.info
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.data.SongRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -223,6 +226,80 @@ class OverlaySongRepositoryTest {
         val songs = repository.songs.first()
 
         assertEquals(listOf(song1, song2), songs)
+    }
+
+    /**
+     * R2-18: When a song's path changes (same song ID, same Song data) the key map must
+     * be refreshed so the overlay picks up the new DB record under the new key.
+     * Before the fix, the content-equality cache kept the stale key and the rename was invisible.
+     */
+    @Test
+    fun overlay_keyRefreshedOnEveryEmission_picksUpRenamedPath() = runBlocking {
+        withTimeout(5_000) {
+            val delegateFlow = MutableSharedFlow<List<Song>>(replay = 1)
+            delegateFlow.tryEmit(listOf(song1, song2))
+            val delegate = object : SongRepository {
+                override val songs: Flow<List<Song>> = delegateFlow
+                override suspend fun refresh() {}
+            }
+            var currentKey = "key1-old"
+            val keys = object : SongKeyResolver {
+                override suspend fun resolveKeys(): Map<Long, String> =
+                    mapOf(song1.id to currentKey, song2.id to "key2")
+            }
+            val info = FakeSongInfoRepository(
+                listOf(
+                    SongInfoEntity(
+                        key = "key1-old",
+                        title = "Old Path Title",
+                        artist = "Artist",
+                        album = null,
+                        coverFile = null,
+                        mbRecordingId = null,
+                        status = SongInfoStatus.APPLIED,
+                        updatedAt = 1000L,
+                    ),
+                    SongInfoEntity(
+                        key = "key1-new",
+                        title = "New Path Title",
+                        artist = "Artist",
+                        album = null,
+                        coverFile = null,
+                        mbRecordingId = null,
+                        status = SongInfoStatus.APPLIED,
+                        updatedAt = 2000L,
+                    ),
+                )
+            )
+            val covers = FakeCoverStore()
+
+            val repository = OverlaySongRepository(delegate, keys, info, covers)
+
+            val emissions = mutableListOf<List<Song>>()
+            val collectJob = launch {
+                repository.songs.collect { emissions.add(it) }
+            }
+
+            while (emissions.isEmpty()) {
+                kotlinx.coroutines.delay(10)
+            }
+            assertEquals("Old Path Title", emissions[0][0].title)
+
+            // Simulate path rename: key changes, delegate emits (same Song data)
+            currentKey = "key1-new"
+            delegateFlow.emit(listOf(song1, song2))
+
+            while (emissions.size < 2) {
+                kotlinx.coroutines.delay(10)
+            }
+            assertEquals(
+                "R2-18: key map must be refreshed after path rename even when Song data is unchanged",
+                "New Path Title",
+                emissions[1][0].title,
+            )
+
+            collectJob.cancel()
+        }
     }
 
     private class FakeSongRepository(initialSongs: List<Song>) : SongRepository {

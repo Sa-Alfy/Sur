@@ -162,6 +162,7 @@
     <string name="find_info_err_http">MusicBrainz returned an error (%1$d).</string>
     <string name="find_info_err_generic">Couldn\'t complete lookup.</string>
     <string name="find_info_err_cover_save">Couldn\'t save the cover. Nothing was changed. Try again.</string>
+    <string name="find_info_err_unidentified_song">Could not safely identify song in library. Metadata was not applied.</string>
     <string name="find_info_skip">Skip</string>
     <string name="find_info_remove">Remove found info</string>
     <string name="find_info_cover_preview">Cover preview</string>

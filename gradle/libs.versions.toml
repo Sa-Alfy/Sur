@@ -28,6 +28,7 @@ androidx-media3-session = { group = "androidx.media3", name = "media3-session", 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 androidx-palette = { group = "androidx.palette", name = "palette", version.ref = "palette" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

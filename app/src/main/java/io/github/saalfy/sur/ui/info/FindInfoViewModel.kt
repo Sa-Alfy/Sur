@@ -8,7 +8,6 @@ import io.github.saalfy.sur.SurApplication
 import io.github.saalfy.sur.data.Song
 import io.github.saalfy.sur.data.info.CoverStore
 import io.github.saalfy.sur.data.info.SongInfoEntity
-import io.github.saalfy.sur.data.info.SongInfoKey
 import io.github.saalfy.sur.data.info.SongInfoRepository
 import io.github.saalfy.sur.data.info.SongInfoStatus
 import io.github.saalfy.sur.data.info.SongKeyResolver
@@ -46,6 +45,7 @@ sealed interface SearchState {
         data object Network : Error
         data class Generic(val message: String?) : Error
         data object CoverSaveFailed : Error
+        data object UnidentifiedSong : Error
     }
 }
 
@@ -126,13 +126,19 @@ class FindInfoViewModel(
 
             val key = try {
                 songKeyResolver.resolveKey(song.id)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 null
-            } ?: SongInfoKey.buildKey(null, displayName ?: song.title)
+            }?.takeIf { it.isNotBlank() }
 
-            existingEntity = try {
-                infoRepository.get(key)
-            } catch (_: Exception) {
+            existingEntity = if (key != null) {
+                try {
+                    infoRepository.get(key)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    null
+                }
+            } else {
                 null
             }
             val hasExistingApplied = existingEntity?.status == SongInfoStatus.APPLIED
@@ -288,7 +294,11 @@ class FindInfoViewModel(
 
     private fun applySelected(coverOnly: Boolean, onSuccess: () -> Unit) {
         val candidate = _uiState.value.selectedCandidate ?: return
-        val key = _uiState.value.resolvedKey ?: return
+        val key = _uiState.value.resolvedKey
+        if (key.isNullOrBlank()) {
+            _uiState.update { it.copy(searchState = SearchState.Error.UnidentifiedSong) }
+            return
+        }
 
         cancelWork()
 
@@ -297,7 +307,8 @@ class FindInfoViewModel(
             try {
                 val existing = existingEntity ?: try {
                     infoRepository.get(key)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     null
                 }
                 val oldCoverFile = existing?.coverFile
@@ -320,7 +331,8 @@ class FindInfoViewModel(
                         artist = if (coverOnly) existing?.artist else candidate.artist,
                         album = if (coverOnly) existing?.album else candidate.releaseTitle,
                         coverFile = newCoverFile,
-                        mbRecordingId = candidate.recordingId,
+                        // R2-14: cover-only must not replace the existing MusicBrainz ID.
+                    mbRecordingId = if (coverOnly) existing?.mbRecordingId else candidate.recordingId,
                     )
                 } catch (e: CancellationException) {
                     throw e
@@ -354,13 +366,19 @@ class FindInfoViewModel(
     }
 
     fun skip(onSuccess: () -> Unit) {
-        val key = _uiState.value.resolvedKey ?: return
+        val key = _uiState.value.resolvedKey
+        if (key.isNullOrBlank()) {
+            _uiState.update { it.copy(searchState = SearchState.Error.UnidentifiedSong) }
+            return
+        }
         cancelWork()
         viewModelScope.launch(ioDispatcher) {
             try {
                 infoRepository.skip(key)
-            } catch (_: Exception) {
-                // ignore
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _uiState.update { it.copy(searchState = SearchState.Error.Generic(null)) }
+                return@launch
             }
             withContext(mainDispatcher) {
                 onSuccess()
@@ -369,25 +387,32 @@ class FindInfoViewModel(
     }
 
     fun removeFoundInfo(onSuccess: () -> Unit) {
-        val key = _uiState.value.resolvedKey ?: return
+        val key = _uiState.value.resolvedKey
+        if (key.isNullOrBlank()) {
+            _uiState.update { it.copy(searchState = SearchState.Error.UnidentifiedSong) }
+            return
+        }
         cancelWork()
         viewModelScope.launch(ioDispatcher) {
             val existing = existingEntity ?: try {
                 infoRepository.get(key)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 null
             }
             if (!existing?.coverFile.isNullOrBlank()) {
                 try {
                     coverStore.delete(existing.coverFile)
-                } catch (_: Exception) {
-                    // ignore
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                 }
             }
             try {
                 infoRepository.reset(key)
-            } catch (_: Exception) {
-                // ignore
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _uiState.update { it.copy(searchState = SearchState.Error.Generic(null)) }
+                return@launch
             }
             withContext(mainDispatcher) {
                 onSuccess()

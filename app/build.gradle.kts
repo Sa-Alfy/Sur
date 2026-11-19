@@ -88,6 +88,7 @@ dependencies {
     debugImplementation("io.github.kyant0:taglib:1.0.6")
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.room.testing)
 }
 
 // Refuse to package a release without Sur's release key instead of producing an APK that

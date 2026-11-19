@@ -34,7 +34,8 @@ class SongDeletionCoordinatorTest {
         )
 
         assertEquals(SongDeleteStart.Deleted, coordinator.begin(7L))
-        assertEquals(listOf("resolve", "delete", "queue", "playlist", "info-get", "info-reset", "cover", "artwork"), events)
+        // R2-07: cover file must be deleted BEFORE the DB row is reset.
+        assertEquals(listOf("resolve", "delete", "queue", "playlist", "info-get", "cover", "info-reset", "artwork"), events)
     }
 
     @Test
@@ -55,6 +56,73 @@ class SongDeletionCoordinatorTest {
         val failed = coordinator(events = events, deleter = FakeDeleter(DeleteAttempt.Failed, events))
         assertEquals(SongDeleteStart.Failed, failed.begin(7L))
         assertEquals(listOf("resolve", "delete"), events)
+    }
+
+    // -------------------------------------------------------------------------
+    // R2-07 regression: cover file must be deleted BEFORE the DB row is reset
+    // so that cleanup is idempotent: if the process dies between the two steps
+    // the DB still has the cover filename, so a retry can re-attempt deletion
+    // before finally resetting the row.
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun r2_07_regression_coverFileDeletedBeforeDbReset() = runBlocking {
+        val order = mutableListOf<String>()
+        val info = FakeInfoRepository().apply { rows["key"] = info("cover.jpg") }
+        val coordinator = coordinator(
+            events = order,
+            deleter = FakeDeleter(DeleteAttempt.Deleted, order),
+            info = info,
+        )
+
+        coordinator.begin(7L)
+
+        val coverIdx = order.indexOf("cover")
+        val resetIdx = order.indexOf("info-reset")
+        assertTrue("cover-delete must have been called", coverIdx >= 0)
+        assertTrue("info-reset must have been called", resetIdx >= 0)
+        assertTrue(
+            "R2-07: cover file must be deleted before DB row is reset for idempotent retry",
+            coverIdx < resetIdx,
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // R2-06 regression: finish() returning false must NOT trigger cleanup
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun r2_06_regression_finishReturnsFalse_doesNotCleanPlaylist_metadata_artwork() = runBlocking {
+        val events = mutableListOf<String>()
+        val info = FakeInfoRepository().apply { rows["key"] = info("cover.jpg") }
+
+        // Deleter returns a Confirmation on begin(), and finish() returns false
+        // (simulates the case where finish() cannot verify deletion — e.g. null cursor)
+        val deleter = object : SongDeleter {
+            override suspend fun begin(songId: Long): DeleteAttempt {
+                events += "delete"
+                return DeleteAttempt.Confirmation(null, DeleteConfirmationMode.VERIFY)
+            }
+            override suspend fun finish(songId: Long, mode: DeleteConfirmationMode): Boolean {
+                events += "finish"
+                return false  // verification failed / inconclusive
+            }
+        }
+
+        val coordinator = coordinator(events = events, deleter = deleter, info = info)
+        val pending = coordinator.begin(7L) as SongDeleteStart.Confirmation
+        val result = coordinator.finish(pending, confirmed = true)
+
+        assertFalse("finish() must return false when deletion unverified", result)
+        // No cleanup events must have fired
+        assertFalse("playlist must not be cleaned when deletion unverified", events.contains("playlist"))
+        assertFalse("info-reset must not be called when deletion unverified", events.contains("info-reset"))
+        assertFalse("artwork eviction must not happen when deletion unverified", events.contains("artwork"))
+        assertFalse("queue removal must not happen when deletion unverified", events.contains("queue"))
+        assertFalse("cover file deletion must not happen when deletion unverified", events.contains("cover"))
+        assertEquals("Only resolve, delete, and finish should be invoked; no cleanup", listOf("resolve", "delete", "finish"), events)
+        // The info row must still be present
+        assertEquals("info row must survive inconclusive finish", "cover.jpg", info.rows["key"]?.coverFile)
     }
 
     @Test
@@ -86,6 +154,12 @@ class SongDeletionCoordinatorTest {
         deleter: SongDeleter,
         playlist: FakePlaylistRepository = FakePlaylistRepository(),
         info: FakeInfoRepository = FakeInfoRepository(),
+        coverStore: CoverStore = object : CoverStore by FakeCoverStore() {
+            override fun delete(name: String): Boolean {
+                events += "cover"
+                return true
+            }
+        },
     ) = SongDeletionCoordinator(
         deleter = deleter,
         keyResolver = keyResolver,
@@ -109,12 +183,7 @@ class SongDeletionCoordinatorTest {
                 info.reset(key)
             }
         },
-        coverStore = object : CoverStore by FakeCoverStore() {
-            override fun delete(name: String): Boolean {
-                events += "cover"
-                return true
-            }
-        },
+        coverStore = coverStore,
         artworkEvictor = object : ArtworkEvictor {
             override fun evict(songId: Long) { events += "artwork" }
         },

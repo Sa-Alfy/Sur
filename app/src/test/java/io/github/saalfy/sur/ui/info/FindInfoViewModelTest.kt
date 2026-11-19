@@ -263,7 +263,58 @@ class FindInfoViewModelTest {
         assertEquals("Earlier Artist", saved.artist)
         assertEquals("Earlier Album", saved.album)
         assertEquals("saved_0.jpg", saved.coverFile)
-        assertEquals("rec-1", saved.mbRecordingId)
+        // R2-14 fix: cover-only must preserve the existing MusicBrainz recording ID.
+        assertEquals("old-rec", saved.mbRecordingId)
+    }
+
+    /**
+     * R2-14: When there is no prior entity, cover-only update must NOT set candidate's
+     * mbRecordingId (cover only applies cover, not candidate metadata).
+     */
+    @Test
+    fun coverOnly_noPriorRecord_leavesMbRecordingIdNull() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(9, 9))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        vm.startAutoSearch()
+
+        var done = false
+        vm.applyCoverOnly { done = true }
+
+        assertTrue(done)
+        val saved = fakeRepo.get("Music/Sur/imagine.mp3")
+        assertNotNull(saved)
+        assertNull("Cover-only must not attach candidate's MusicBrainz ID", saved!!.mbRecordingId)
+    }
+
+    /**
+     * R2-14: A full (non-coverOnly) apply must still update mbRecordingId to the candidate's.
+     */
+    @Test
+    fun apply_fullApply_updatesMbRecordingId() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository(
+            initial = mapOf(
+                "Music/Sur/imagine.mp3" to SongInfoEntity(
+                    key = "Music/Sur/imagine.mp3",
+                    title = "Old Title",
+                    artist = "Old Artist",
+                    album = null,
+                    coverFile = null,
+                    mbRecordingId = "old-rec",
+                    status = SongInfoStatus.APPLIED,
+                    updatedAt = 1000L,
+                )
+            )
+        )
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = null)
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        vm.startAutoSearch()
+
+        var done = false
+        vm.apply { done = true }
+
+        assertTrue(done)
+        assertEquals("rec-1", fakeRepo.get("Music/Sur/imagine.mp3")?.mbRecordingId)
     }
 
     @Test
@@ -609,6 +660,167 @@ class FindInfoViewModelTest {
         assertNull(fakeRepo.get("Music/Sur/imagine.mp3"))
     }
 
+    // -------------------------------------------------------------------------
+    // R2-02 regression: pathless fallback key must NOT be used to write metadata
+    // -------------------------------------------------------------------------
+
+    /**
+     * R2-02: When resolveKey() returns null, the ViewModel must leave resolvedKey = null.
+     * Before the fix, it fell back to SongInfoKey.buildKey(null, displayName), producing
+     * "imagine.mp3" (no path), which is incompatible with the library's path-qualified key
+     * "Music/Sur/imagine.mp3".
+     */
+    @Test
+    fun r2_02_regression_resolverReturnsNull_resolvedKeyIsNull() = runBlocking {
+        val vm = createViewModel(
+            song = sampleSong,
+            keyResolver = NullKeyResolver(),
+            displayName = "imagine.mp3",
+        )
+        assertNull(
+            "resolvedKey must be null when resolver returns null; pathless fallback must not be used",
+            vm.uiState.value.resolvedKey,
+        )
+    }
+
+    @Test
+    fun r2_02_regression_resolverThrows_resolvedKeyIsNull() = runBlocking {
+        val vm = createViewModel(
+            song = sampleSong,
+            keyResolver = ThrowingKeyResolver(RuntimeException("MediaStore unavailable")),
+            displayName = "imagine.mp3",
+        )
+        assertNull(
+            "resolvedKey must be null when resolver throws; pathless fallback must not be used",
+            vm.uiState.value.resolvedKey,
+        )
+    }
+
+    @Test
+    fun r2_02_regression_applyWithoutValidKey_doesNotWriteToRepository() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(1))
+        val vm = createViewModel(
+            song = sampleSong,
+            lookup = fakeLookup,
+            infoRepo = fakeRepo,
+            keyResolver = NullKeyResolver(),
+        )
+        vm.startAutoSearch()
+
+        var completed = false
+        vm.apply { completed = true }
+
+        assertFalse("apply() must not complete when resolvedKey is null", completed)
+        assertEquals(
+            "searchState must transition to UnidentifiedSong error when applying without valid key",
+            SearchState.Error.UnidentifiedSong,
+            vm.uiState.value.searchState,
+        )
+        // No phantom record must exist in the repository
+        assertTrue(
+            "No database record must be written when key resolution failed",
+            fakeRepo.allKeys().isEmpty(),
+        )
+    }
+
+    @Test
+    fun r2_02_regression_skipWithoutValidKey_doesNotWriteToRepository() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val vm = createViewModel(
+            song = sampleSong,
+            infoRepo = fakeRepo,
+            keyResolver = NullKeyResolver(),
+        )
+
+        var completed = false
+        vm.skip { completed = true }
+
+        assertFalse("skip() must not complete when resolvedKey is null", completed)
+        assertEquals(
+            "searchState must transition to UnidentifiedSong error when skipping without valid key",
+            SearchState.Error.UnidentifiedSong,
+            vm.uiState.value.searchState,
+        )
+        assertTrue(
+            "No database record must be written on skip when key resolution failed",
+            fakeRepo.allKeys().isEmpty(),
+        )
+    }
+
+    @Test
+    fun r2_02_regression_removeFoundInfoWithoutValidKey_doesNotResetRepository() = runBlocking {
+        val fakeRepo = FakeSongInfoRepository()
+        val vm = createViewModel(
+            song = sampleSong,
+            infoRepo = fakeRepo,
+            keyResolver = NullKeyResolver(),
+        )
+
+        var completed = false
+        vm.removeFoundInfo { completed = true }
+
+        assertFalse("removeFoundInfo() must not complete when resolvedKey is null", completed)
+        assertEquals(
+            "searchState must transition to UnidentifiedSong error when removing without valid key",
+            SearchState.Error.UnidentifiedSong,
+            vm.uiState.value.searchState,
+        )
+    }
+
+    @Test
+    fun r2_02_regression_validKeyResolution_usedForExistingLookup() = runBlocking {
+        val pathKey = "Music/Sur/imagine.mp3"
+        val fakeRepo = FakeSongInfoRepository(
+            initial = mapOf(
+                pathKey to SongInfoEntity(
+                    key = pathKey,
+                    title = "Earlier Title",
+                    artist = "Earlier Artist",
+                    album = null,
+                    coverFile = null,
+                    mbRecordingId = null,
+                    status = SongInfoStatus.APPLIED,
+                    updatedAt = 1000L,
+                )
+            )
+        )
+        val vm = createViewModel(
+            song = sampleSong,
+            infoRepo = fakeRepo,
+            keyResolver = FakeSongKeyResolver(pathKey),
+        )
+
+        assertEquals(pathKey, vm.uiState.value.resolvedKey)
+        assertTrue(
+            "Existing metadata under path-qualified key must be found",
+            vm.uiState.value.hasExistingApplied,
+        )
+    }
+
+    @Test
+    fun r2_02_regression_pathlessKeyNeverWrittenToRepository() = runBlocking {
+        // A pathless key (e.g. "imagine.mp3") must never be written to the DB
+        val fakeRepo = FakeSongInfoRepository()
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = null)
+        val vm = createViewModel(
+            song = sampleSong,
+            lookup = fakeLookup,
+            infoRepo = fakeRepo,
+            keyResolver = NullKeyResolver(),
+            displayName = "imagine.mp3",
+        )
+        vm.startAutoSearch()
+        vm.apply { }  // should be a no-op
+
+        // Ensure no pathless record ("imagine.mp3") was created
+        assertNull(
+            "Pathless key 'imagine.mp3' must never be written to the repository",
+            fakeRepo.get("imagine.mp3"),
+        )
+        assertTrue("Repository must remain empty", fakeRepo.allKeys().isEmpty())
+    }
+
     private fun createViewModel(
         song: Song,
         lookup: SongInfoLookup = FakeSongInfoLookup(),
@@ -660,6 +872,8 @@ class FindInfoViewModelTest {
         fun put(key: String, entity: SongInfoEntity) {
             data[key] = entity
         }
+
+        fun allKeys(): Set<String> = data.keys.toSet()
 
         override suspend fun get(key: String): SongInfoEntity? = data[key]
 
@@ -753,5 +967,15 @@ class FindInfoViewModelTest {
     private class FakeSongKeyResolver(private val key: String) : SongKeyResolver {
         override suspend fun resolveKeys(): Map<Long, String> = mapOf(100L to key)
         override suspend fun resolveKey(songId: Long): String? = if (songId == 100L) key else null
+    }
+
+    private class NullKeyResolver : SongKeyResolver {
+        override suspend fun resolveKeys(): Map<Long, String> = emptyMap()
+        override suspend fun resolveKey(songId: Long): String? = null
+    }
+
+    private class ThrowingKeyResolver(private val error: Throwable) : SongKeyResolver {
+        override suspend fun resolveKeys(): Map<Long, String> = emptyMap()
+        override suspend fun resolveKey(songId: Long): String? = throw error
     }
 }

@@ -60,9 +60,6 @@ class OverlaySongRepository(
     fun coverFor(songId: Long): File? = coverFilesSnapshot.get()[songId]
 
     override val songs: Flow<List<Song>> = flow {
-        var lastDelegateSongs: List<Song>? = null
-        var cachedKeyMap: Map<Long, String> = emptyMap()
-
         val safeInfoFlow: Flow<List<SongInfoEntity>> = try {
             info.observeAll()
                 .catch { e ->
@@ -75,18 +72,15 @@ class OverlaySongRepository(
         }
 
         delegate.songs.combine(safeInfoFlow) { delegateSongs, infoList ->
-            val keyMap = if (delegateSongs == lastDelegateSongs && cachedKeyMap.isNotEmpty()) {
-                cachedKeyMap
-            } else {
-                try {
-                    keys.resolveKeys().also {
-                        cachedKeyMap = it
-                        lastDelegateSongs = delegateSongs
-                    }
-                } catch (e: Exception) {
-                    logWarning("Failed to resolve song keys, falling back to plain songs", e)
-                    emptyMap()
-                }
+            // R2-18: Do not cache the key map keyed on delegateSongs identity.
+            // A file rename leaves Song data identical (same id/title) but changes
+            // the RELATIVE_PATH → MediaStore key → cached map would be stale.
+            // resolveKeys() is cheap (IO-bound) relative to the combine rate.
+            val keyMap = try {
+                keys.resolveKeys()
+            } catch (e: Exception) {
+                logWarning("Failed to resolve song keys, falling back to plain songs", e)
+                emptyMap()
             }
 
             if (keyMap.isEmpty() || infoList.isEmpty()) {

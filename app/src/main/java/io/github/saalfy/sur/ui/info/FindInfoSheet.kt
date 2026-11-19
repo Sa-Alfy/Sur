@@ -165,6 +165,7 @@ fun FindInfoSheet(
                         is SearchState.Error.Http -> stringResource(R.string.find_info_err_http, search.code)
                         is SearchState.Error.Generic -> search.message ?: stringResource(R.string.find_info_err_generic)
                         SearchState.Error.CoverSaveFailed -> stringResource(R.string.find_info_err_cover_save)
+                        SearchState.Error.UnidentifiedSong -> stringResource(R.string.find_info_err_unidentified_song)
                     }
                     Text(
                         text = message,

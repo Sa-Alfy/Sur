@@ -64,8 +64,14 @@ class SongDeletionCoordinator(
         playlistRepository.deleteEntriesForSong(songId)
         if (key != null) {
             val coverFile = infoRepository.get(key)?.coverFile
-            infoRepository.reset(key)
+            // R2-07: Delete the file *before* resetting the DB row so the cleanup
+            // is idempotent on retry.  If the process dies between the two steps:
+            //   file-first: DB still points to the file → next cleanup call re-deletes
+            //                (file already gone → no-op) then resets DB.  ✓
+            //   db-first  : DB already cleared → next cleanup call skips the delete
+            //                → file is orphaned permanently.                        ✗
             if (coverFile != null) coverStore.delete(coverFile)
+            infoRepository.reset(key)
         }
         artworkEvictor.evict(songId)
     }
