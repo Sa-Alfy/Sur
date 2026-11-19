@@ -35,6 +35,11 @@ val openSourceLicenses: List<OpenSourceLicense> = listOf(
         description = "Asynchronous programming for Kotlin.",
     ),
     OpenSourceLicense(
+        name = "kotlinx.serialization",
+        license = "Apache-2.0",
+        description = "JSON and state serialization used by AndroidX libraries.",
+    ),
+    OpenSourceLicense(
         name = "NewPipeExtractor",
         license = "GPL-3.0",
         description = "Extracts audio stream info from YouTube links.",
