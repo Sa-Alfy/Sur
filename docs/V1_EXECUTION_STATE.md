@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **9 complete → next: Phase 10 (Final V1 validation)**.
+Updated: 2026-11-19. Current phase: **10 complete. v1.0.0 prepared on main; signed APK and phone tests pending (maintainer).**
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -37,7 +37,8 @@ Updated: 2026-11-19. Current phase: **9 complete → next: Phase 10 (Final V1 va
 | 6 | PASS (code) | 7b4b8ac | Core playback and library, details below |
 | 7 | PASS (code) | 75649c0 | Downloads and metadata, details below |
 | 8 | PASS (code) | 15783a8 | UI/UX, details below |
-| 9 | PASS | (see git log) | Security and release config, details below |
+| 9 | PASS | a4c2bfb | Security and release config, details below |
+| 10 | PASS (automated) | (see git log, tag v1.0.0) | Final validation, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -236,6 +237,58 @@ Updated: 2026-11-19. Current phase: **9 complete → next: Phase 10 (Final V1 va
 - Privacy disclosure fixed: README listed only the Find info hosts; it now also lists the
   YouTube hosts the downloader contacts (youtube.com, googlevideo.com, ytimg.com).
 - No code changes needed. Legal compliance not assessed.
+
+## Phase 10: Final V1 validation
+Decisions (maintainer, 2026-11-19): merge `licenses-screen` (PR #12), merge the three Dependabot
+PRs (#9 Compose plugin 2.4.21, #10 Gradle wrapper 9.9.0, #11 OkHttp 5.5.1), bump to 1.0.0
+(versionCode 9) and tag `v1.0.0`; the signed APK is built by the maintainer.
+
+### Final test report (Windows, JDK 17, Gradle 9.9.0, after all merges and the version bump)
+| Command | Result |
+|---|---|
+| `./gradlew clean` | PASS |
+| `./gradlew testDebugUnitTest --rerun-tasks` | PASS: 342 tests, 0 failures, 0 errors, 2 skipped (network tests, opt-in) |
+| `./gradlew assembleDebug` | PASS |
+| `./gradlew assembleDebugAndroidTest` | PASS |
+| `./gradlew lintDebug` | PASS (1 informational NewerVersionAvailable; baseline explained in Phase 9) |
+| `./gradlew minifyReleaseWithR8` | PASS (unsigned R8 shrink) |
+| `scripts/check-permissions.sh` | PASS (11 permissions, all allowlisted) |
+| `connectedDebugAndroidTest` | PASS in CI on API 28 emulator: PlaylistDaoIntegrationTest 9/9, SurMigrationTest 3/3 (see final CI run below) |
+| Real-network YouTube download (`-Psur.networkTests=true`) | PASS on 2026-11-19 (Phase 9) |
+| `assembleRelease` (signed) | NOT RUN: release key is not on this machine (by design) |
+| Device journeys on the A1k | NOT RUN: no cable; see checklist |
+
+Windows note: Gradle 9.9.0's wrapper download timed out over IPv6;
+`-Djava.net.preferIPv4Stack=true` added to `JAVA_TOOL_OPTIONS` fixed it (CLAUDE.md).
+
+### Acceptance checklist
+| Requirement | State |
+|---|---|
+| Core V1 features implemented, none removed | DONE |
+| Known V1-blocking defects fixed (R1/R2 list, phases 1-9) | DONE (see phases) |
+| User data protected (metadata precedence, safe deletion, migrations) | DONE, tested |
+| Download lifecycle reliable (ownership, cancel, retry, resume) | DONE, tested |
+| Playlist identity safe | DONE, tested (JVM + emulator) |
+| Database migrations verified | DONE (MigrationTestHelper on API 28 in CI) |
+| Unit tests pass | DONE (342) |
+| Instrumented tests pass | DONE (12/12, emulator in CI) |
+| Debug build / lint / R8 | DONE |
+| Signed release build | PENDING (maintainer, needs release key) |
+| Important journeys on a real device | PENDING (A1k: list below) |
+| Docs and release notes | DONE (`docs/releases/release-1.0.0.md`, README, CLAUDE.md) |
+| Single active branch `main`, clean tree, local = remote | see final git state below |
+
+### Phone checklist for the A1k (before publishing the release)
+1. Install v1.0.0 over v0.3.5 with playlists present: all playlists, songs and order kept.
+2. Library scan, search, refresh after copying a new file.
+3. Play, screen off for 10+ min, notification and lock-screen controls, headphone unplug pauses.
+4. Shuffle, repeat, seek, queue jump.
+5. Playlist create/rename/reorder/delete, M3U export and import.
+6. Find cover & details: apply, cover only, remove found info (asks first).
+7. Delete a song: confirmation, song gone from playlists and queue.
+8. Download a YouTube link: progress, cancel, download again, play the result; turn Wi-Fi off
+   mid-download and back on within a few seconds (should resume).
+9. Kill Sur from recents during a download, start another download (no stuck card).
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real

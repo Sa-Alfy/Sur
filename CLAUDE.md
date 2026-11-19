@@ -16,5 +16,6 @@
 - Stop at the end of each phase and wait.
 
 ## Recent phases
-- Latest release: v0.3.5. Playback, playlists, search, downloader with UI, M3U export/import, Find info, song deletion, CI (build, lint, R8, permission guard) are done.
-- In progress: Room migration + stable playlist keys (PR #2, not merged). Then phone tests on the A1k, then v1.0.0.
+- v1.0.0 prepared on main (V1 phases 0-10, see docs/V1_EXECUTION_STATE.md): metadata precedence, download ownership/retry/resume, safe deletion + orphan cover sweep, playlist identity (DB v3: volume, duration, original id), migration tests in CI on an API 28 emulator.
+- Windows Gradle needs JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=D:\tmpsock -Djava.net.preferIPv4Stack=true".
+- Next: signed v1.0.0 APK built by the maintainer, then phone tests on the A1k (docs/V1_EXECUTION_STATE.md "Unverified on device").
