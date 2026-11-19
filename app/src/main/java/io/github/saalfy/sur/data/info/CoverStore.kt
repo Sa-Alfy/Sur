@@ -42,10 +42,19 @@ interface CoverStore {
     fun file(name: String): File?
     fun delete(name: String): Boolean
 
+    /** Stored covers with their last-modified time (0 if unknown). Used by the orphan sweep. */
+    fun list(): List<StoredCover> = emptyList()
+
     companion object {
         operator fun invoke(context: Context): CoverStore = FileCoverStore(context)
     }
 }
+
+data class StoredCover(val name: String, val lastModified: Long)
+
+/** Cover names are plain file names created by [CoverStore.save]; never a path. */
+internal fun isSafeCoverName(name: String): Boolean =
+    name.isNotBlank() && '/' !in name && '\\' !in name && name != "." && name != ".."
 
 class FileCoverStore(
     context: Context,
@@ -99,14 +108,19 @@ class FileCoverStore(
     }
 
     override fun file(name: String): File? {
-        if (name.isBlank()) return null
+        if (!isSafeCoverName(name)) return null
         val file = File(coversDir, name)
         return if (file.exists() && file.isFile) file else null
     }
 
     override fun delete(name: String): Boolean {
-        if (name.isBlank()) return false
+        if (!isSafeCoverName(name)) return false
         val file = File(coversDir, name)
         return if (file.exists()) file.delete() else false
     }
+
+    override fun list(): List<StoredCover> =
+        coversDir.listFiles { f -> f.isFile && f.name.endsWith(".jpg") }
+            ?.map { StoredCover(it.name, it.lastModified()) }
+            .orEmpty()
 }

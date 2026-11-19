@@ -5,12 +5,14 @@ import io.github.saalfy.sur.data.info.SongInfoEntity
 import io.github.saalfy.sur.data.info.SongInfoRepository
 import io.github.saalfy.sur.data.info.SongInfoStatus
 import io.github.saalfy.sur.data.info.SongKeyResolver
+import io.github.saalfy.sur.data.info.StoredCover
 import io.github.saalfy.sur.data.playlist.Playlist
 import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.PlaylistSong
 import io.github.saalfy.sur.data.playlist.PlaylistSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,7 +37,7 @@ class SongDeletionCoordinatorTest {
 
         assertEquals(SongDeleteStart.Deleted, coordinator.begin(7L))
         // R2-07: cover file must be deleted BEFORE the DB row is reset.
-        assertEquals(listOf("resolve", "delete", "queue", "playlist", "info-get", "cover", "info-reset", "artwork"), events)
+        assertEquals(listOf("resolve", "delete", "queue", "playlist", "info-get", "info-reset", "cover", "artwork"), events)
     }
 
     @Test
@@ -58,33 +60,91 @@ class SongDeletionCoordinatorTest {
         assertEquals(listOf("resolve", "delete"), events)
     }
 
-    // -------------------------------------------------------------------------
-    // R2-07 regression: cover file must be deleted BEFORE the DB row is reset
-    // so that cleanup is idempotent: if the process dies between the two steps
-    // the DB still has the cover filename, so a retry can re-attempt deletion
-    // before finally resetting the row.
-    // -------------------------------------------------------------------------
-
+    // R2-07: the row is reset before its cover is deleted, so a row never points at a missing
+    // file and stale overrides cannot re-attach to a new file at the same path. A cover left
+    // behind by a failure is removed by the orphan sweep (see tests below).
     @Test
-    fun r2_07_regression_coverFileDeletedBeforeDbReset() = runBlocking {
+    fun r2_07_dbRowResetBeforeCoverDelete() = runBlocking {
         val order = mutableListOf<String>()
         val info = FakeInfoRepository().apply { rows["key"] = info("cover.jpg") }
-        val coordinator = coordinator(
-            events = order,
-            deleter = FakeDeleter(DeleteAttempt.Deleted, order),
-            info = info,
-        )
+        coordinator(events = order, deleter = FakeDeleter(DeleteAttempt.Deleted, order), info = info).begin(7L)
+        assertTrue(order.indexOf("info-reset") in 0 until order.indexOf("cover"))
+    }
 
-        coordinator.begin(7L)
+    @Test
+    fun r2_07_resetFailure_keepsCoverFile() = runBlocking {
+        val events = mutableListOf<String>()
+        val info = FakeInfoRepository().apply { rows["key"] = info("cover.jpg"); failReset = true }
+        val result = coordinator(events = events, deleter = FakeDeleter(DeleteAttempt.Deleted, events), info = info).begin(7L)
+        assertEquals(SongDeleteStart.Deleted, result)
+        assertFalse("row still references the cover, so it must stay", events.contains("cover"))
+        assertTrue("artwork cache still evicted", events.contains("artwork"))
+    }
 
-        val coverIdx = order.indexOf("cover")
-        val resetIdx = order.indexOf("info-reset")
-        assertTrue("cover-delete must have been called", coverIdx >= 0)
-        assertTrue("info-reset must have been called", resetIdx >= 0)
-        assertTrue(
-            "R2-07: cover file must be deleted before DB row is reset for idempotent retry",
-            coverIdx < resetIdx,
+    @Test
+    fun r2_04_failingStepDoesNotSkipTheRest() = runBlocking {
+        val events = mutableListOf<String>()
+        val info = FakeInfoRepository().apply { rows["key"] = info("cover.jpg") }
+        val playlist = FakePlaylistRepository(failDelete = true)
+        val result = coordinator(events = events, deleter = FakeDeleter(DeleteAttempt.Deleted, events), playlist = playlist, info = info).begin(7L)
+        assertEquals(SongDeleteStart.Deleted, result)
+        assertTrue(events.containsAll(listOf("info-reset", "cover", "artwork")))
+        assertTrue(info.rows.isEmpty())
+    }
+
+    @Test
+    fun coverSharedWithAnotherRow_isNotDeleted() = runBlocking {
+        val events = mutableListOf<String>()
+        val info = FakeInfoRepository().apply {
+            rows["key"] = info("shared.jpg")
+            rows["other"] = info("shared.jpg").copy(key = "other")
+        }
+        coordinator(events = events, deleter = FakeDeleter(DeleteAttempt.Deleted, events), info = info).begin(7L)
+        assertTrue(events.contains("info-reset"))
+        assertFalse(events.contains("cover"))
+    }
+
+    @Test
+    fun r2_08_deleterThrows_reportsFailed_noCleanup() = runBlocking {
+        val events = mutableListOf<String>()
+        val deleter = object : SongDeleter {
+            override suspend fun begin(songId: Long): DeleteAttempt = throw IllegalStateException("createDeleteRequest")
+            override suspend fun finish(songId: Long, mode: DeleteConfirmationMode): Boolean = throw IllegalStateException()
+        }
+        val c = coordinator(events = events, deleter = deleter)
+        assertEquals(SongDeleteStart.Failed, c.begin(7L))
+        assertFalse(c.finish(SongDeleteStart.Confirmation(7L, "key", null, DeleteConfirmationMode.VERIFY), confirmed = true))
+        assertEquals(listOf("resolve"), events)
+    }
+
+    @Test
+    fun r2_08_userCancelledConfirmation_cleansNothing() = runBlocking {
+        val events = mutableListOf<String>()
+        val c = coordinator(events = events, deleter = FakeDeleter(DeleteAttempt.Deleted, events))
+        assertFalse(c.finish(SongDeleteStart.Confirmation(7L, "key", null, DeleteConfirmationMode.VERIFY), confirmed = false))
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun orphanSweep_removesOnlyOldUnreferencedCovers() = runBlocking {
+        val now = 10 * SongDeletionCoordinator.ORPHAN_MIN_AGE_MS
+        val old = now - SongDeletionCoordinator.ORPHAN_MIN_AGE_MS - 1
+        val store = ListingCoverStore(
+            mutableMapOf("orphan-old.jpg" to old, "orphan-new.jpg" to now - 1000, "used.jpg" to old, "unknown-age.jpg" to 0L),
         )
+        val info = FakeInfoRepository().apply { rows["k"] = info("used.jpg").copy(key = "k") }
+        val c = coordinator(deleter = FakeDeleter(DeleteAttempt.Deleted, mutableListOf()), info = info, coverStore = store, now = { now })
+        assertEquals(1, c.sweepOrphanCovers())
+        assertEquals(setOf("orphan-new.jpg", "used.jpg", "unknown-age.jpg"), store.files.keys)
+    }
+
+    @Test
+    fun orphanSweep_runsAfterDeletion_andRetriesEarlierLeftovers() = runBlocking {
+        val now = 10 * SongDeletionCoordinator.ORPHAN_MIN_AGE_MS
+        val store = ListingCoverStore(mutableMapOf("left-from-crash.jpg" to 1L))
+        val c = coordinator(deleter = FakeDeleter(DeleteAttempt.Deleted, mutableListOf()), coverStore = store, now = { now })
+        c.begin(7L)
+        assertTrue(store.files.isEmpty())
     }
 
     // -------------------------------------------------------------------------
@@ -154,6 +214,7 @@ class SongDeletionCoordinatorTest {
         deleter: SongDeleter,
         playlist: FakePlaylistRepository = FakePlaylistRepository(),
         info: FakeInfoRepository = FakeInfoRepository(),
+        now: () -> Long = { 0L },
         coverStore: CoverStore = object : CoverStore by FakeCoverStore() {
             override fun delete(name: String): Boolean {
                 events += "cover"
@@ -187,6 +248,7 @@ class SongDeletionCoordinatorTest {
         artworkEvictor = object : ArtworkEvictor {
             override fun evict(songId: Long) { events += "artwork" }
         },
+        now = now,
     )
 
     private fun info(cover: String) = SongInfoEntity(
@@ -224,10 +286,14 @@ class SongDeletionCoordinatorTest {
     private class FakeInfoRepository : SongInfoRepository {
         val rows = mutableMapOf<String, SongInfoEntity>()
         override suspend fun get(key: String): SongInfoEntity? = rows[key]
-        override fun observeAll(): Flow<List<SongInfoEntity>> = emptyFlow()
+        var failReset = false
+        override fun observeAll(): Flow<List<SongInfoEntity>> = flow { emit(rows.values.toList()) }
         override suspend fun apply(key: String, title: String?, artist: String?, album: String?, coverFile: String?, mbRecordingId: String?) = Unit
         override suspend fun skip(key: String) = Unit
-        override suspend fun reset(key: String) { rows.remove(key) }
+        override suspend fun reset(key: String) {
+            if (failReset) throw IllegalStateException("db error")
+            rows.remove(key)
+        }
     }
 
     private class FakeCoverStore : CoverStore {
@@ -236,8 +302,16 @@ class SongDeletionCoordinatorTest {
         override fun delete(name: String): Boolean = true
     }
 
+    private class ListingCoverStore(val files: MutableMap<String, Long>) : CoverStore {
+        override fun save(bytes: ByteArray): String = "cover"
+        override fun file(name: String): File? = null
+        override fun delete(name: String): Boolean = files.remove(name) != null
+        override fun list(): List<StoredCover> = files.map { StoredCover(it.key, it.value) }
+    }
+
     private class FakePlaylistRepository(
         val entries: MutableMap<Long, MutableList<Long>> = mutableMapOf(),
+        val failDelete: Boolean = false,
     ) : PlaylistRepository {
         override val playlists: Flow<List<PlaylistSummary>> = emptyFlow()
         override fun playlist(id: Long): Flow<Playlist?> = emptyFlow()
@@ -248,6 +322,7 @@ class SongDeletionCoordinatorTest {
         override suspend fun addSongs(playlistId: Long, songIds: List<Long>) = Unit
         override suspend fun reconcile() = Unit
         override suspend fun deleteEntriesForSong(songId: Long) {
+            if (failDelete) throw IllegalStateException("db error")
             entries.replaceAll { _, ids -> ids.filterNot { it == songId }.toMutableList() }
         }
         override suspend fun removeEntry(entryId: Long) = Unit

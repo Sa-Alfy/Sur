@@ -110,7 +110,7 @@ fun SongsScreen(
     var findInfoSong by remember { mutableStateOf<Song?>(null) }
     var deleteSong by remember { mutableStateOf<Song?>(null) }
     var pendingDelete by remember { mutableStateOf<SongDeleteStart.Confirmation?>(null) }
-    var permissionSongId by remember { mutableStateOf<Long?>(null) }
+    var permissionSongId by rememberSaveable { mutableStateOf<Long?>(null) }
     val selecting = selected.isNotEmpty()
 
     val deletionCoordinator = remember {
@@ -169,7 +169,12 @@ fun SongsScreen(
 
     LaunchedEffect(pendingDelete) {
         pendingDelete?.let { confirmation ->
-            confirmation.intentSender?.let { sender ->
+            val sender = confirmation.intentSender
+            if (sender == null) {
+                // R2-08: no system dialog to show; report failure instead of waiting forever.
+                pendingDelete = null
+                Toast.makeText(context, R.string.delete_failed, Toast.LENGTH_SHORT).show()
+            } else {
                 intentSenderLauncher.launch(
                     androidx.activity.result.IntentSenderRequest.Builder(sender).build(),
                 )
@@ -313,7 +318,11 @@ fun SongsScreen(
                 scope.launch {
                     when (val start = deletionCoordinator.begin(song.id)) {
                         SongDeleteStart.Deleted -> Toast.makeText(context, R.string.deleted, Toast.LENGTH_SHORT).show()
-                        SongDeleteStart.PermissionRequired -> permissionSongId = song.id
+                        SongDeleteStart.PermissionRequired -> {
+                            // R2-08: Android 8-9 needs WRITE_EXTERNAL_STORAGE; ask for it, then retry.
+                            permissionSongId = song.id
+                            permissionLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        }
                         SongDeleteStart.Failed -> Toast.makeText(context, R.string.delete_failed, Toast.LENGTH_SHORT).show()
                         is SongDeleteStart.Confirmation -> pendingDelete = start
                     }

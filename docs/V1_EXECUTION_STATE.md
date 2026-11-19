@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **2 complete → next: Phase 3 (Deletion and artwork recovery)**.
+Updated: 2026-11-19. Current phase: **3 complete → next: Phase 4 (Playlist identity)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -33,7 +33,8 @@ Updated: 2026-11-19. Current phase: **2 complete → next: Phase 3 (Deletion and
 |---|---|---|---|
 | 0 | PASS | a817177 | Checkpoint of Batch 2 + V1 docs |
 | 1 | PASS | f33d325 | Metadata integrity, details below |
-| 2 | PASS | (see git log) | Download lifecycle, details below |
+| 2 | PASS | 3d2e9cc | Download lifecycle, details below |
+| 3 | PASS | (see git log) | Deletion and artwork recovery, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -70,6 +71,29 @@ Updated: 2026-11-19. Current phase: **2 complete → next: Phase 3 (Deletion and
   the library while the UI shows Idle (file is valid, not corrupt). A start intent with a blank
   link that stops without `startForeground` may hit the O+ foreground-start timeout (edge case,
   only via external intents). Neither verified on a device.
+## Phase 3: Deletion and artwork recovery
+- R2-08 (real bug, hits Android 8-9 incl. the A1k): `PermissionRequired` set
+  `permissionSongId` but never launched the permission request, so delete silently did
+  nothing. `SongsScreen` now requests WRITE_EXTERNAL_STORAGE and retries on grant;
+  `permissionSongId` is `rememberSaveable` (survives rotation). A confirmation with no system
+  IntentSender now shows "delete failed" instead of waiting forever.
+- R2-08: `SongDeletionCoordinator.begin/finish` catch deleter/platform errors (e.g.
+  `createDeleteRequest` throwing) and report Failed instead of crashing the UI scope.
+- R2-06 / R2-09: verified already fixed (null cursor = UNKNOWN; only CONFIRMED_ABSENT cleans).
+- R2-04 / R2-12: cleanup steps are independent; one failing step no longer skips the rest, and
+  the artwork cache is always evicted.
+- R2-07: order is now row reset → cover delete (a row never points at a missing file, so stale
+  overrides can't re-attach to a new file at the same path). Cover is deleted only if no other
+  row references it. Leftover covers (partial failure, process death) are removed by
+  `sweepOrphanCovers()`, which runs after every deletion and skips files < 1 h old (a download
+  or Find info apply may not have written its row yet). `FileCoverStore` rejects path-like names.
+- Tests: `SongDeletionCoordinatorTest` +8 (failing steps, reset failure, shared cover, deleter
+  throws, user cancel, orphan sweep age/reference rules). Full `testDebugUnitTest`: 311 pass /
+  0 fail / 2 skipped. `assembleDebug`, `lintDebug`: PASS.
+- Not fixed: if the activity is recreated while the Android 11+ delete dialog is open,
+  `pendingDelete` (holds an IntentSender) is lost; the file is deleted by the system but the
+  playlist/overlay cleanup is skipped. The orphan sweep covers the cover file; playlist entries
+  fall to Phase 4 reconciliation. Unverified on device.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
