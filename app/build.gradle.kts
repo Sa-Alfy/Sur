@@ -15,6 +15,7 @@ android {
         targetSdk = 37
         versionCode = 8
         versionName = "0.3.5"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Release signing comes from Gradle properties outside the repo (e.g. ~/.gradle/gradle.properties).
@@ -89,6 +90,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }
 
 // Refuse to package a release without Sur's release key instead of producing an APK that

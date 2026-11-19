@@ -6,7 +6,9 @@ How to add the next migration (example: v2 -> v3):
 2. Write the `Migration` (e.g. `MIGRATION_2_3`) in `SurMigrations.kt` with the exact SQL.
 3. Add it to `SurMigrations.ALL`, keeping the list in version order.
 4. Build (`./gradlew assembleDebug`) so Room exports the new schema JSON under `app/schemas/...` and commit it.
-5. Extend the contiguity test in `SurMigrationsTest.kt` if the chain changes.
+5. Extend the contiguity test in `SurMigrationsTest.kt` if the chain changes, and add a
+   MigrationTestHelper case to `app/src/androidTest/.../SurMigrationTest.kt`
+   (`./gradlew connectedDebugAndroidTest`, needs a device or emulator).
 6. Do the phone upgrade test in `docs/testing/phase11b3-test.md` item 1: install the new APK over the old one and confirm the data survives.
 
 Never use `fallbackToDestructiveMigration`: it silently deletes the user's playlists and song info instead of migrating them.

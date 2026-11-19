@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **4 complete → next: Phase 5 (Database migration safety)**.
+Updated: 2026-11-19. Current phase: **5 complete (device run pending) → next: Phase 6 (Core playback and library)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -24,9 +24,6 @@ Updated: 2026-11-19. Current phase: **4 complete → next: Phase 5 (Database mig
 | `connectedDebugAndroidTest` | BLOCKED: no adb/device/emulator on this machine |
 | lint, release build | NOT RUN (Phase 9/10) |
 
-## Known gaps found at baseline (not fixed in Phase 0)
-- androidTest setup incomplete; `PlaylistDaoIntegrationTest` also hosts the migration test;
-  schemas not wired as androidTest assets. → Phase 5.
 
 ## Phase log
 | Phase | Status | Commit | Notes |
@@ -35,7 +32,8 @@ Updated: 2026-11-19. Current phase: **4 complete → next: Phase 5 (Database mig
 | 1 | PASS | f33d325 | Metadata integrity, details below |
 | 2 | PASS | 3d2e9cc | Download lifecycle, details below |
 | 3 | PASS | d04c497 | Deletion and artwork recovery, details below |
-| 4 | PASS | (see git log) | Playlist identity, details below |
+| 4 | PASS | f759ee0 | Playlist identity, details below |
+| 5 | PASS (code) / BLOCKED (device run) | (see git log) | Migration safety, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -116,6 +114,24 @@ Updated: 2026-11-19. Current phase: **4 complete → next: Phase 5 (Database mig
   (within 1 s) could still be re-linked. Entries that were dead before the upgrade have no
   stored duration and stay unresolved (shown as missing, not deleted). Android 9 → 10 OS
   upgrade relies on derived volume names matching `VOLUME_NAME`; unverified.
+## Phase 5: Database migration safety
+- Schema history: sur.db v1 (shipped in v0.3.5) → v2 → v3; sur_info.db v1. Shipped identity
+  hashes of both v1 schemas equal the committed `1.json` files (no silent schema drift).
+- Registration: `SurDatabase.build` adds `SurMigrations.ALL` (1→2, 2→3); `SurInfoDatabase`
+  adds the empty `SurInfoMigrations.ALL`. No `fallbackToDestructiveMigration` anywhere.
+- androidTest fixed: `testInstrumentationRunner`, androidx.test ext-junit 1.3.0 + runner 1.7.0.
+  Room Gradle plugin bundles all schema JSONs into the test APK (checked in the APK).
+- New `SurMigrationTest` (MigrationTestHelper): 1→2, 2→3, and 1→current opened through Room +
+  DAO with order preserved and first reconcile filling identities.
+  `PlaylistDaoIntegrationTest` rewritten for the v3 identity API (9 tests: backfill, relink +
+  COALESCE original id, reused path, other volume, duplicate drop, idempotence, delete
+  compaction, move, add de-dup).
+- JVM guards in `SurMigrationsTest` (+4): every schema version exported, v3 adds exactly the
+  migrated columns, no destructive fallback in `src/main`, 2→3 versions.
+- Results: `assembleDebugAndroidTest` PASS (compiles). `testDebugUnitTest` 324 pass / 0 fail /
+  2 skipped. `assembleDebug`, `lintDebug` PASS.
+  `connectedDebugAndroidTest`: BLOCKED. adb is at D:\tools\android-sdk\platform-tools but no
+  device is attached and no emulator/system image is installed.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
