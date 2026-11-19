@@ -92,6 +92,14 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
+    constraints {
+        // room-testing (MigrationTestHelper) reads schemas with kotlinx-serialization-json 1.8.1,
+        // but lifecycle pulls core 1.7.3 into the app, and test APKs must use the app's versions.
+        // The mix crashes with AbstractMethodError, so raise the app's core to match.
+        implementation(libs.kotlinx.serialization.core) {
+            because("align with room-migration's kotlinx-serialization-json 1.8.1")
+        }
+    }
 }
 
 // Refuse to package a release without Sur's release key instead of producing an APK that
