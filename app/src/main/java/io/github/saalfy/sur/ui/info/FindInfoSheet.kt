@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import io.github.saalfy.sur.ui.common.ConfirmDialog
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -352,8 +353,21 @@ fun FindInfoSheet(
             Spacer(Modifier.height(16.dp))
 
             if (uiState.hasExistingApplied) {
+                var confirmRemove by rememberSaveable { mutableStateOf(false) }
+                if (confirmRemove) {
+                    ConfirmDialog(
+                        title = stringResource(R.string.find_info_remove),
+                        message = stringResource(R.string.find_info_remove_message),
+                        confirmLabel = stringResource(R.string.remove),
+                        onConfirm = {
+                            confirmRemove = false
+                            viewModel.removeFoundInfo(onDismiss)
+                        },
+                        onDismiss = { confirmRemove = false },
+                    )
+                }
                 TextButton(
-                    onClick = { viewModel.removeFoundInfo(onDismiss) },
+                    onClick = { confirmRemove = true },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),

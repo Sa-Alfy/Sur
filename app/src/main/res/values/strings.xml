@@ -165,6 +165,8 @@
     <string name="find_info_err_unidentified_song">Could not safely identify song in library. Metadata was not applied.</string>
     <string name="find_info_skip">Skip</string>
     <string name="find_info_remove">Remove found info</string>
+    <string name="find_info_remove_message">The title, artist, album and cover found for this song will be removed. The song file is not changed.</string>
+    <string name="remove">Remove</string>
     <string name="find_info_cover_preview">Cover preview</string>
     <string name="find_info_no_confident">Couldn\'t find a confident match — tap a suggestion to use it</string>
 </resources>

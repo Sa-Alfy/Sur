@@ -396,11 +396,21 @@ class FindInfoViewModel(
         }
         cancelWork()
         viewModelScope.launch(ioDispatcher) {
-            val existing = existingEntity ?: try {
+            // Fresh read: a download may have changed the row since the sheet opened.
+            val existing = try {
                 infoRepository.get(key)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                null
+                existingEntity
+            }
+            // Row first, then its cover (R2-07): a failed reset must not leave the row pointing
+            // at a deleted file. A cover left behind is removed by the orphan sweep.
+            try {
+                infoRepository.reset(key)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _uiState.update { it.copy(searchState = SearchState.Error.Generic(null)) }
+                return@launch
             }
             if (!existing?.coverFile.isNullOrBlank()) {
                 try {
@@ -408,13 +418,6 @@ class FindInfoViewModel(
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                 }
-            }
-            try {
-                infoRepository.reset(key)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _uiState.update { it.copy(searchState = SearchState.Error.Generic(null)) }
-                return@launch
             }
             withContext(mainDispatcher) {
                 onSuccess()

@@ -683,6 +683,28 @@ class FindInfoViewModelTest {
         assertNull(fakeRepo.get("Music/Sur/imagine.mp3"))
     }
 
+    /** R2-07: if the row cannot be reset, its cover must stay, or the row points at nothing. */
+    @Test
+    fun removeFoundInfo_resetFails_keepsCover() = runBlocking {
+        val coverFile = "existing_cover.jpg"
+        val fakeCoverStore = FakeCoverStore().apply { files[coverFile] = File("/fake/$coverFile") }
+        val row = SongInfoEntity(
+            key = "Music/Sur/imagine.mp3", title = "Title", artist = "Artist", album = "Album",
+            coverFile = coverFile, mbRecordingId = "rec-1", status = SongInfoStatus.APPLIED, updatedAt = 1000L,
+        )
+        val failingRepo = object : FakeSongInfoRepository(initial = mapOf(row.key to row)) {
+            override suspend fun reset(key: String) = throw IllegalStateException("db locked")
+        }
+        val vm = createViewModel(song = sampleSong, infoRepo = failingRepo, coverStore = fakeCoverStore)
+
+        var completed = false
+        vm.removeFoundInfo { completed = true }
+
+        assertFalse(completed)
+        assertTrue(fakeCoverStore.deletedFiles.isEmpty())
+        assertEquals(coverFile, failingRepo.get(row.key)?.coverFile)
+    }
+
     // -------------------------------------------------------------------------
     // R2-02 regression: pathless fallback key must NOT be used to write metadata
     // -------------------------------------------------------------------------

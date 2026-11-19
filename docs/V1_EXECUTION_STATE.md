@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **7 complete → next: Phase 8 (UI/UX completion)**.
+Updated: 2026-11-19. Current phase: **8 complete → next: Phase 9 (Security and release configuration)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -35,7 +35,8 @@ Updated: 2026-11-19. Current phase: **7 complete → next: Phase 8 (UI/UX comple
 | 4 | PASS | f759ee0 | Playlist identity, details below |
 | 5 | PASS | bbcada7, f735ff1, b9db57d | Migration safety, details below |
 | 6 | PASS (code) | 7b4b8ac | Core playback and library, details below |
-| 7 | PASS (code) | (see git log) | Downloads and metadata, details below |
+| 7 | PASS (code) | 75649c0 | Downloads and metadata, details below |
+| 8 | PASS (code) | (see git log) | UI/UX, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -189,6 +190,21 @@ Updated: 2026-11-19. Current phase: **7 complete → next: Phase 8 (UI/UX comple
   / 0 fail / 2 skipped. `assembleDebug`, `lintDebug`, `minifyReleaseWithR8` PASS.
 - Unverified on device: a real YouTube download end to end, retry on a flaky network, the
   extractor check on Android 9.
+## Phase 8: UI/UX completion
+- Fixed: Find info "Remove found info" deleted the user's title/artist/album/cover in one tap
+  with no confirmation. Now asks first (`ConfirmDialog`, new strings `find_info_remove_message`,
+  `remove`).
+- Fixed: remove-found-info used the row cached when the sheet opened and deleted the cover
+  before the row. Now reads fresh, resets the row first, then deletes the cover (a failed reset
+  keeps the cover; leftovers are swept). Test `removeFoundInfo_resetFails_keepsCover`.
+- Audited, no change: every `IconButton` has a contentDescription; the only sub-48 dp element
+  (44 dp download icon) is decorative; list rows ellipsize titles/artists (songs, playlists,
+  playlist detail, mini player, now playing, Find info); empty states for library, search,
+  playlists and empty playlist; loading = blank while the flow is null (no empty-state flash);
+  permission-denied and permanently-denied screens; delete song / delete playlist confirm.
+- Results: `testDebugUnitTest` 339 pass / 0 fail / 2 skipped. `assembleDebug`, `lintDebug` PASS.
+- Unverified (needs eyes on a device): layout on the A1k's small screen and on tablets, font
+  scaling, TalkBack order, dark mode contrast.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
