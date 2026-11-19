@@ -47,12 +47,15 @@ class DownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var currentJob: Job? = null
     @Volatile private var isDownloading = false
+    /** Latest start id; stopSelf(id) then never stops a service that has a newer start pending. */
+    private var lastStartId = 0
 
     internal var downloader: AudioDownloader = NewPipeAudioDownloader()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         if (intent == null) return START_NOT_STICKY
 
         if (intent.action == ACTION_CANCEL) {
@@ -62,7 +65,7 @@ class DownloadService : Service() {
 
         val link = intent.getStringExtra(EXTRA_LINK) ?: intent.dataString
         if (link.isNullOrBlank()) {
-            if (!isDownloading) stopSelf()
+            if (!isDownloading) stopSelf(startId)
             return START_NOT_STICKY
         }
 
@@ -79,14 +82,14 @@ class DownloadService : Service() {
         currentJob?.cancel()
         currentJob = null
         isDownloading = false
-        DownloadManager.updateState(DownloadState.Idle)
+        DownloadManager.cancelActive()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        stopSelf(lastStartId)
     }
 
     private fun startDownload(link: String) {
         isDownloading = true
-        DownloadManager.updateState(DownloadState.Resolving)
+        val token = DownloadManager.begin()
         createNotificationChannel()
 
         val initialNotification = buildNotification(
@@ -102,7 +105,17 @@ class DownloadService : Service() {
         } else {
             0
         }
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, initialNotification, foregroundServiceType)
+        try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, initialNotification, foregroundServiceType)
+        } catch (t: Exception) {
+            // R2-05: e.g. ForegroundServiceStartNotAllowedException. Without this the state
+            // stayed Resolving forever and every later start was rejected as Busy.
+            Log.e("SurDownload", "startForeground failed", t)
+            isDownloading = false
+            DownloadManager.update(token, DownloadState.Error(DownloadError.Failed, technicalSummary(t)))
+            stopSelf(lastStartId)
+            return
+        }
 
         val job = serviceScope.launch {
             var rawFile: File? = null
@@ -123,7 +136,7 @@ class DownloadService : Service() {
                 }
 
                 // Initial determinate notification with video title
-                updateNotification(
+                if (DownloadManager.isOwner(token)) updateNotification(
                     title = info.title,
                     text = info.artist,
                     progress = 0,
@@ -138,7 +151,7 @@ class DownloadService : Service() {
                 rawFile = raw
                 remuxedFile = remuxed
 
-                DownloadManager.updateState(DownloadState.Downloading(0f, info.title, info.artist))
+                DownloadManager.update(token, DownloadState.Downloading(0f, info.title, info.artist))
                 var lastProgressPct = -1
                 withContext(Dispatchers.IO) {
                     downloader.download(info, raw) { done, total ->
@@ -150,27 +163,30 @@ class DownloadService : Service() {
                         val pct = (progressRatio * 100).toInt()
                         if (pct != lastProgressPct) {
                             lastProgressPct = pct
-                            DownloadManager.updateState(DownloadState.Downloading(progressRatio, info.title, info.artist))
-                            updateNotification(
-                                title = info.title,
-                                text = info.artist,
-                                progress = pct,
-                                maxProgress = 100,
-                                indeterminate = false,
-                            )
+                            // R2-11: a late callback from a cancelled or replaced run is dropped.
+                            DownloadManager.update(token, DownloadState.Downloading(progressRatio, info.title, info.artist)) {
+                                updateNotification(
+                                    title = info.title,
+                                    text = info.artist,
+                                    progress = pct,
+                                    maxProgress = 100,
+                                    indeterminate = false,
+                                )
+                            }
                         }
                     }
                 }
 
                 // 4. Mp4Remux
-                DownloadManager.updateState(DownloadState.Saving)
-                updateNotification(
-                    title = info.title,
-                    text = info.artist,
-                    progress = 100,
-                    maxProgress = 100,
-                    indeterminate = false,
-                )
+                DownloadManager.update(token, DownloadState.Saving) {
+                    updateNotification(
+                        title = info.title,
+                        text = info.artist,
+                        progress = 100,
+                        maxProgress = 100,
+                        indeterminate = false,
+                    )
+                }
                 try {
                     // Capture the launch job: currentJob is nulled by
                     // cancelCurrentDownload() right after cancel(), so
@@ -259,22 +275,17 @@ class DownloadService : Service() {
                     }
                 }
 
-                DownloadManager.updateState(DownloadState.Done(saved.songId, info.title))
+                // R2-03: Done only while this run still owns the state (not after a cancel).
+                DownloadManager.update(token, DownloadState.Done(saved.songId, info.title))
             } catch (e: CancellationException) {
-                if (currentJob === coroutineContext[Job]) {
-                    DownloadManager.updateState(DownloadState.Idle)
-                }
+                DownloadManager.update(token, DownloadState.Idle)
                 throw e
             } catch (e: DownloadException) {
                 Log.e("SurDownload", "download failed", e)
-                if (currentJob === coroutineContext[Job]) {
-                    DownloadManager.updateState(DownloadState.Error(e.error, technicalSummary(e.cause ?: e)))
-                }
+                DownloadManager.update(token, DownloadState.Error(e.error, technicalSummary(e.cause ?: e)))
             } catch (t: Throwable) {
                 Log.e("SurDownload", "download failed", t)
-                if (currentJob === coroutineContext[Job]) {
-                    DownloadManager.updateState(DownloadState.Error(DownloadError.Failed, technicalSummary(t)))
-                }
+                DownloadManager.update(token, DownloadState.Error(DownloadError.Failed, technicalSummary(t)))
             } finally {
                 rawFile?.delete()
                 remuxedFile?.delete()
@@ -282,7 +293,7 @@ class DownloadService : Service() {
                     isDownloading = false
                     currentJob = null
                     ServiceCompat.stopForeground(this@DownloadService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    stopSelf(lastStartId)
                 }
             }
         }

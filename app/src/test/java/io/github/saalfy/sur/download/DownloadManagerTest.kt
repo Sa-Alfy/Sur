@@ -14,7 +14,7 @@ class DownloadManagerTest {
 
     @Before
     fun setUp() {
-        DownloadManager.reset()
+        DownloadManager.clearForTest()
     }
 
     @Test
