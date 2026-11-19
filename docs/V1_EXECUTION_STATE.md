@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **8 complete → next: Phase 9 (Security and release configuration)**.
+Updated: 2026-11-19. Current phase: **9 complete → next: Phase 10 (Final V1 validation)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -36,7 +36,8 @@ Updated: 2026-11-19. Current phase: **8 complete → next: Phase 9 (Security and
 | 5 | PASS | bbcada7, f735ff1, b9db57d | Migration safety, details below |
 | 6 | PASS (code) | 7b4b8ac | Core playback and library, details below |
 | 7 | PASS (code) | 75649c0 | Downloads and metadata, details below |
-| 8 | PASS (code) | (see git log) | UI/UX, details below |
+| 8 | PASS (code) | 15783a8 | UI/UX, details below |
+| 9 | PASS | (see git log) | Security and release config, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -205,6 +206,36 @@ Updated: 2026-11-19. Current phase: **8 complete → next: Phase 9 (Security and
 - Results: `testDebugUnitTest` 339 pass / 0 fail / 2 skipped. `assembleDebug`, `lintDebug` PASS.
 - Unverified (needs eyes on a device): layout on the A1k's small screen and on tablets, font
   scaling, TalkBack order, dark mode contrast.
+## Phase 9: Security and release configuration
+- Permissions: minimal for the features; storage permissions capped by maxSdkVersion (READ ≤32,
+  WRITE ≤28); CI permission allowlist guard in place.
+- Components: MainActivity exported (launcher + SEND text/plain; shared text only pre-fills the
+  URL field, the user must tap Download). PlaybackService exported as Media3 requires for
+  external controllers (Bluetooth, system UI); any app can control playback, which is normal for
+  music players (lint ExportedService baselined). DownloadService not exported. All
+  PendingIntents FLAG_IMMUTABLE.
+- Network: no cleartext (targetSdk 37 default, no `http://` in sources); timeouts set.
+- Secrets: none tracked, none in history (keystore/jks/p12/pem/google-services, password/key
+  patterns). Release signing via Gradle properties outside the repo; `*.jks`/`*.keystore`/
+  `local.properties` ignored. Packaging a release without the key fails by design.
+- Logging: no personal data, paths or stream tokens logged (only exception text and a public
+  thumbnail URL).
+- Backup: `allowBackup="false"` (no cloud backup). Android 12+ device-to-device transfer still
+  copies playlists/metadata (no dataExtractionRules, lint baselined); acceptable, no secrets.
+- R8: `minifyReleaseWithR8` passes in CI; NewPipe/Rhino keep rules in
+  `downloader/consumer-rules.pro` (from NewPipeExtractor README). A minified release has NOT
+  been run on a device (needs the release key or a test signing setup).
+- Lint baseline: the 2 baselined errors are `LocalContextGetResourceValueCall` in click
+  callbacks (SongsScreen, add-to-playlist toast); not composition reads, false positive.
+- Crash handling: none beyond Android default (no analytics by design).
+- Dependencies: NewPipeExtractor v0.26.5 verified working against YouTube today (real network
+  test: resolved and downloaded 10,271,496 bytes of a CC video through `downloadRanges`,
+  header `ftyp`). v0.27.1 exists (removes dead YouTube clients, n-sig update, Java 17 target);
+  not adopted for V1 to avoid an untested platform change. YouTube breakage is the main
+  post-release maintenance risk: upgrade the extractor when downloads start failing.
+- Privacy disclosure fixed: README listed only the Find info hosts; it now also lists the
+  YouTube hosts the downloader contacts (youtube.com, googlevideo.com, ytimg.com).
+- No code changes needed. Legal compliance not assessed.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real

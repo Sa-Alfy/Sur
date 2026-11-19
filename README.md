@@ -30,7 +30,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Playlists backup**: export playlists as M3U files and import them back with automatic matching (relative path, file name, or title and artist) and detailed summary dialogs — no extra permissions needed.
 - **Find cover & details**: look up track metadata (title, artist, album) and cover art via MusicBrainz and Cover Art Archive, from a song's ⋮ menu or the placeholder art on Now Playing. The search runs on its own and preselects the best match; use it, take only the cover, pick another match, or search yourself with "artist - title". Matches are saved locally.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
-- **Private**: no accounts, cloud, ads or analytics. Network is used only for downloads you start and for Find cover & details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).
+- **Private**: no accounts, cloud, ads or analytics. Network is used only for downloads you start (YouTube: youtube.com, googlevideo.com, ytimg.com) and for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org).
 
 ## Roadmap
 
@@ -45,7 +45,7 @@ Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
 - **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked when you save a download or delete a song.
 - **Notifications** (Android 13+, optional): to show playback controls and download progress.
-- **Network access**: used only for downloads you start and for Find cover & details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).
+- **Network access**: used only for downloads you start (youtube.com, googlevideo.com, ytimg.com) and for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org). Sur makes no network requests on its own.
 
 Some phones (Oppo, Xiaomi, Vivo, Huawei…) stop background apps aggressively. If music cuts out, allow Sur to run without battery restrictions. Sur offers a shortcut on first launch.
 
