@@ -27,6 +27,7 @@ import io.github.saalfy.sur.downloader.DownloadException
 import io.github.saalfy.sur.downloader.audioFileName
 import io.github.saalfy.sur.downloader.mp4.Mp4Remux
 import io.github.saalfy.sur.downloader.mp4.Mp4TagWriter
+import io.github.saalfy.sur.downloader.mp4.hasReadableAudio
 import io.github.saalfy.sur.downloader.mp4.looksLikeMp4
 import io.github.saalfy.sur.downloader.newpipe.NewPipeAudioDownloader
 import io.github.saalfy.sur.data.info.applyDownloadOverlay
@@ -145,6 +146,9 @@ class DownloadService : Service() {
                 )
 
                 // 3. Download to cacheDir
+                // Only one download runs at a time, so any older temp file was left by a run that
+                // was killed (process death skips the finally below).
+                withContext(Dispatchers.IO) { deleteStaleDownloadTemps(cacheDir) }
                 val timestamp = System.currentTimeMillis()
                 val raw = File(cacheDir, "download_${timestamp}_raw.m4a")
                 val remuxed = File(cacheDir, "download_${timestamp}_remux.m4a")
@@ -208,7 +212,9 @@ class DownloadService : Service() {
                 // 4b. Reject non-MP4 output (e.g. an HTML error page saved
                 // as .m4a). The raw fallback above is still allowed: a
                 // valid raw m4a passes this check and is saved.
-                if (!looksLikeMp4(remuxed)) {
+                // R2-16: the header alone does not prove the audio is usable, so also ask the
+                // platform extractor for an audio track and its first sample.
+                if (!looksLikeMp4(remuxed) || !withContext(Dispatchers.IO) { hasReadableAudio(remuxed) }) {
                     throw DownloadException(DownloadError.Failed)
                 }
 
@@ -393,3 +399,11 @@ internal fun technicalSummary(t: Throwable): String {
     }.toList()
     return parts.joinToString(" <- ").take(300)
 }
+
+private val DOWNLOAD_TEMP_NAME = Regex("""^download_\d+_(raw|remux)\.m4a$""")
+
+/** Deletes temp files of earlier download runs from [dir]; returns how many were removed. */
+internal fun deleteStaleDownloadTemps(dir: File): Int =
+    dir.listFiles { f -> f.isFile && DOWNLOAD_TEMP_NAME.matches(f.name) }
+        ?.count { it.delete() }
+        ?: 0

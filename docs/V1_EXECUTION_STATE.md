@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **6 complete → next: Phase 7 (Downloads and metadata experience)**.
+Updated: 2026-11-19. Current phase: **7 complete → next: Phase 8 (UI/UX completion)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -34,7 +34,8 @@ Updated: 2026-11-19. Current phase: **6 complete → next: Phase 7 (Downloads an
 | 3 | PASS | d04c497 | Deletion and artwork recovery, details below |
 | 4 | PASS | f759ee0 | Playlist identity, details below |
 | 5 | PASS | bbcada7, f735ff1, b9db57d | Migration safety, details below |
-| 6 | PASS (code) | (see git log) | Core playback and library, details below |
+| 6 | PASS (code) | 7b4b8ac | Core playback and library, details below |
+| 7 | PASS (code) | (see git log) | Downloads and metadata, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -163,6 +164,31 @@ Updated: 2026-11-19. Current phase: **6 complete → next: Phase 7 (Downloads an
 - Unverified (needs the phone): background playback with screen off, notification and
   lock-screen controls, headphone unplug, audio focus with calls/other apps, ColorOS battery
   killing the service, library refresh after adding files.
+## Phase 7: Downloads and metadata experience
+- Fixed (file corruption): the chunked download loop appended a full-file HTTP 200 response
+  after chunks already written; with an unknown content length nothing caught it and a corrupt
+  song was saved. Moved to `downloader/RangedDownload.kt` (`downloadRanges`, used by
+  `NewPipeAudioDownloader`): 200 mid-download restarts from 0; a 206 whose Content-Range start
+  differs from the requested offset is retried; 416 with unknown length ends cleanly.
+- Added retry: I/O errors, timeouts and 5xx retry each chunk twice (1 s, 3 s) and resume from
+  the current byte offset instead of failing the whole download. 403/410 (expired/refused
+  stream URL) still fail at once with ExtractionFailed. Cancellation checked per read and
+  during retry waits.
+- R2-16: after the container check, `hasReadableAudio()` (MediaExtractor: audio track + first
+  sample readable) must pass before a file is saved; covers the raw-copy fallback when remux
+  fails. Device-only API: NOT unit tested, unverified on device.
+- Partial files: download temp files left by a killed process are deleted when the next
+  download starts (`deleteStaleDownloadTemps`, matches only `download_<digits>_(raw|remux).m4a`).
+- Audited, no change: link parsing (`YouTubeLink`, tested), timeouts (20 s connect / 30 s read
+  for streams, 10 s for thumbnails and MusicBrainz), error mapping to user messages, storage
+  check (2.2x stream size on cacheDir), unique file names (legacy `uniqueFile`; MediaStore
+  renames on 10+), MP4 tagging fallback, MusicBrainz HTTP/JSON/cover-size error handling.
+- Tests: `RangedDownloadTest` (10: exact assembly, unknown length via Content-Range and 416,
+  mid-download 200, wrong range start, resume after drop, retry budget, 403 no-retry, zero-byte
+  stall, cancel mid-download), `DownloadTempCleanupTest` (1). Full `testDebugUnitTest`: 338 pass
+  / 0 fail / 2 skipped. `assembleDebug`, `lintDebug`, `minifyReleaseWithR8` PASS.
+- Unverified on device: a real YouTube download end to end, retry on a flaky network, the
+  extractor check on Android 9.
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
