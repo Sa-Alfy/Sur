@@ -267,6 +267,29 @@ class FindInfoViewModelTest {
         assertEquals("old-rec", saved.mbRecordingId)
     }
 
+    /** R2-01: a row changed after the sheet opened must not be overwritten by a stale copy. */
+    @Test
+    fun coverOnly_usesFreshRow_notTheOneCachedWhenSheetOpened() = runBlocking {
+        val k = "Music/Sur/imagine.mp3"
+        fun entity(title: String, rec: String) = SongInfoEntity(
+            key = k, title = title, artist = "A", album = "B", coverFile = null,
+            mbRecordingId = rec, status = SongInfoStatus.APPLIED, updatedAt = 1000L,
+        )
+        val fakeRepo = FakeSongInfoRepository()
+        fakeRepo.put(k, entity("Stale Title", "stale-rec"))
+        val fakeLookup = FakeSongInfoLookup(searchResult = listOf(imagine), coverBytes = byteArrayOf(9, 9))
+        val vm = createViewModel(song = sampleSong, lookup = fakeLookup, infoRepo = fakeRepo)
+        vm.startAutoSearch()
+        fakeRepo.put(k, entity("Newer User Title", "newer-rec"))
+
+        vm.applyCoverOnly { }
+
+        val saved = fakeRepo.get(k)!!
+        assertEquals("Newer User Title", saved.title)
+        assertEquals("newer-rec", saved.mbRecordingId)
+        assertEquals("saved_0.jpg", saved.coverFile)
+    }
+
     /**
      * R2-14: When there is no prior entity, cover-only update must NOT set candidate's
      * mbRecordingId (cover only applies cover, not candidate metadata).

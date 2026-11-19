@@ -29,7 +29,7 @@ import io.github.saalfy.sur.downloader.mp4.Mp4Remux
 import io.github.saalfy.sur.downloader.mp4.Mp4TagWriter
 import io.github.saalfy.sur.downloader.mp4.looksLikeMp4
 import io.github.saalfy.sur.downloader.newpipe.NewPipeAudioDownloader
-import io.github.saalfy.sur.data.info.SongInfoStatus
+import io.github.saalfy.sur.data.info.applyDownloadOverlay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -238,50 +238,15 @@ class DownloadService : Service() {
                                 Log.w("SurDownload", "Song info/cover overlay skipped: could not resolve song key for songId=${saved.songId} after 5 attempts")
                             }
                             if (key != null) {
-                                val coverFileName = if (coverJpeg != null) {
-                                    runCatching { container.coverStore.save(coverJpeg) }.getOrNull()
-                                } else null
-                                val existing = try {
-                                    container.songInfoRepository.get(key)
-                                } catch (e: Exception) {
-                                    // R2-13: rethrow CE so the outer handler can reset state.
-                                    if (e is CancellationException) throw e
-                                    null
-                                }
-                                val oldCoverFile = existing?.coverFile
-                                // If no new cover was saved (no thumbnail, or
-                                // the save failed), keep the existing cover
-                                // instead of overwriting it with null.
-                                val coverToApply = coverFileName ?: oldCoverFile
-                                // R2-01: Respect the precedence rule
-                                //   User Explicit Override > External Provider Metadata
-                                // If the user has already APPLIED metadata for this key, preserve
-                                // non-blank fields rather than overwriting with download values.
-                                val isApplied = existing?.status == SongInfoStatus.APPLIED
-                                val titleToApply = if (isApplied && !existing.title.isNullOrBlank()) existing.title else info.title
-                                val artistToApply = if (isApplied && !existing.artist.isNullOrBlank()) existing.artist else info.artist
-                                val albumToApply = if (isApplied) existing.album else null
-                                val mbIdToApply = if (isApplied) existing.mbRecordingId else null
-                                try {
-                                    container.songInfoRepository.apply(
-                                        key = key,
-                                        title = titleToApply,
-                                        artist = artistToApply,
-                                        album = albumToApply,
-                                        coverFile = coverToApply,
-                                        mbRecordingId = mbIdToApply,
-                                    )
-                                } catch (t: Throwable) {
-                                    if (!coverFileName.isNullOrBlank()) {
-                                        runCatching { container.coverStore.delete(coverFileName) }
-                                    }
-                                    throw t
-                                }
-                                // Only delete the old cover when a new cover
-                                // file was saved and apply succeeded.
-                                if (!coverFileName.isNullOrBlank() && !oldCoverFile.isNullOrBlank() && oldCoverFile != coverFileName) {
-                                    runCatching { container.coverStore.delete(oldCoverFile) }
-                                }
+                                // R2-01: user-owned metadata and cover win over download data.
+                                applyDownloadOverlay(
+                                    repository = container.songInfoRepository,
+                                    covers = container.coverStore,
+                                    key = key,
+                                    title = info.title,
+                                    artist = info.artist,
+                                    thumbnail = coverJpeg,
+                                )
                                 container.artworkLoader.evict(saved.songId)
                             }
                         } catch (t: Throwable) {

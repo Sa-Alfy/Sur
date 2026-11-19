@@ -305,11 +305,13 @@ class FindInfoViewModel(
         viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(isApplying = true) }
             try {
-                val existing = existingEntity ?: try {
+                // Read fresh: the row may have changed since the sheet opened (e.g. a download
+                // finished), and a stale copy would overwrite newer user data.
+                val existing = try {
                     infoRepository.get(key)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
-                    null
+                    existingEntity
                 }
                 val oldCoverFile = existing?.coverFile
                 val coverBytes = (_uiState.value.coverState as? CoverState.Success)?.bytes

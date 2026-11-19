@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **0 complete → next: Phase 1 (Metadata integrity)**.
+Updated: 2026-11-19. Current phase: **1 complete → next: Phase 2 (Download lifecycle)**.
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -25,16 +25,30 @@ Updated: 2026-11-19. Current phase: **0 complete → next: Phase 1 (Metadata int
 | lint, release build | NOT RUN (Phase 9/10) |
 
 ## Known gaps found at baseline (not fixed in Phase 0)
-- `DownloadMetadataPreservationTest` tests a test-local copy of the merge logic, not
-  `DownloadService` (violates "tests exercise production code"). → Phase 1.
-- DownloadService metadata merge drops user cover (`coverFile`) precedence check unverified. → Phase 1.
 - androidTest setup incomplete; `PlaylistDaoIntegrationTest` also hosts the migration test;
   schemas not wired as androidTest assets. → Phase 5.
 
 ## Phase log
 | Phase | Status | Commit | Notes |
 |---|---|---|---|
-| 0 | PASS | (see git log) | Checkpoint of Batch 2 + V1 docs |
+| 0 | PASS | a817177 | Checkpoint of Batch 2 + V1 docs |
+| 1 | PASS | (see git log) | Metadata integrity, details below |
+
+## Phase 1: Metadata integrity
+- R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
+  `data/info/DownloadOverlay.kt` (`applyDownloadOverlay`). APPLIED row keeps title, artist,
+  album, MBID and cover; provider only fills blank text or a missing cover. SKIPPED row is left
+  alone. Unreadable row → nothing written (was: treated as absent and overwritten). Thumbnail
+  saved only when used; deleted if the DB write fails.
+- R2-14: already fixed in Batch 2 and covered by FindInfoViewModel tests. Added: apply reads
+  the row fresh instead of the copy cached when the sheet opened.
+- Clear vs missing: the data model has no per-field clear. Null/blank = "no override, show the
+  file tag"; a full clear is `reset` (row deleted). Documented in `DownloadOverlay.kt`.
+- Tests: removed `DownloadMetadataPreservationTest` (tested a copy). Added `DownloadOverlayTest`
+  (11, production function + `RoomSongInfoRepository`) and one stale-row VM test.
+  Full `testDebugUnitTest`: 296 pass / 0 fail / 2 skipped. `assembleDebug`, `lintDebug`: PASS.
+- Unverified: re-download on a device; the new stale-row test was not run against the old code.
+
 
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
