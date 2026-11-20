@@ -19,7 +19,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -29,10 +35,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +55,8 @@ import io.github.saalfy.sur.ui.player.MiniPlayer
 import io.github.saalfy.sur.ui.player.NowPlayingScreen
 import io.github.saalfy.sur.ui.playlist.PlaylistDetailScreen
 import io.github.saalfy.sur.ui.playlists.PlaylistsScreen
+import io.github.saalfy.sur.ui.settings.SettingsScreen
+import io.github.saalfy.sur.ui.settings.rememberUpdateManager
 import io.github.saalfy.sur.ui.songs.SongsScreen
 
 private const val TAB_PLAYLISTS = 0
@@ -57,6 +68,8 @@ fun SurApp(
     playerConnection: PlayerConnection,
     sharedUrl: String? = null,
 ) {
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    UpdateStartupCheck()
     AudioPermissionGate {
         BatteryOptimizationPrompt()
 
@@ -79,12 +92,15 @@ fun SurApp(
         LaunchedEffect(controller, hasMedia) {
             if (controller != null && !hasMedia) nowPlayingOpen = false
         }
+        val snackbar = remember { SnackbarHostState() }
+        UpdateNotices(snackbar, onView = { settingsOpen = true })
         BackHandler(enabled = openPlaylistId != null) { openPlaylistId = null }
         BackHandler(enabled = openPlaylistId == null && tab != TAB_PLAYLISTS) { tab = TAB_PLAYLISTS }
 
         Box(Modifier.fillMaxSize()) {
             Scaffold(
                 contentWindowInsets = WindowInsets(0),
+                snackbarHost = { SnackbarHost(snackbar) },
                 bottomBar = {
                     Column {
                         if (playerState != null && hasMedia) {
@@ -130,7 +146,10 @@ fun SurApp(
                             onBack = { openPlaylistId = null },
                             onPlay = play,
                         )
-                        shownTab == TAB_PLAYLISTS -> PlaylistsScreen(onOpen = { openPlaylistId = it })
+                        shownTab == TAB_PLAYLISTS -> PlaylistsScreen(
+                            onOpen = { openPlaylistId = it },
+                            onOpenSettings = { settingsOpen = true },
+                        )
                         shownTab == TAB_SONGS -> SongsScreen(
                             onPlay = play,
                             currentSongId = { playerState?.currentItem?.songId },
@@ -153,6 +172,9 @@ fun SurApp(
             if (nowPlayingOpen) {
                 NowPlayingScreen(state = playerState, onClose = { nowPlayingOpen = false })
             }
+            if (settingsOpen) {
+                SettingsScreen(onClose = { settingsOpen = false })
+            }
         }
     }
 }
@@ -172,4 +194,61 @@ private fun rememberPlayAction(onPlay: (List<Song>, Int) -> Unit): (List<Song>, 
             launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
+}
+
+/** Restores cached update info and checks the server if the cooldown passed. Never blocks the UI. */
+@Composable
+private fun UpdateStartupCheck() {
+    val manager = rememberUpdateManager()
+    LaunchedEffect(Unit) {
+        manager.restore().join()
+        manager.checkIfDue()
+    }
+}
+
+/** Non-blocking update notices: a snackbar, or a dismissible dialog for a required update. */
+@Composable
+private fun UpdateNotices(snackbar: SnackbarHostState, onView: () -> Unit) {
+    val manager = rememberUpdateManager()
+    val resources = LocalResources.current
+    val notice by manager.notice.collectAsStateWithLifecycle()
+    val currentOnView by rememberUpdatedState(onView)
+
+    LaunchedEffect(manager) {
+        manager.justUpdated.collect { updated ->
+            if (updated) {
+                manager.clearJustUpdated()
+                snackbar.showSnackbar(resources.getString(R.string.update_done, manager.installedVersionName))
+            }
+        }
+    }
+    // Collected here (not keyed on the value) so marking the notice as shown doesn't cancel the snackbar.
+    LaunchedEffect(manager) {
+        manager.notice.collect { m ->
+            if (m != null && !m.mandatory) {
+                manager.noticeShown()
+                val result = snackbar.showSnackbar(
+                    resources.getString(R.string.update_notice, m.versionName),
+                    actionLabel = resources.getString(R.string.update_notice_view),
+                    duration = SnackbarDuration.Long,
+                )
+                if (result == SnackbarResult.ActionPerformed) currentOnView()
+            }
+        }
+    }
+    val required = notice?.takeIf { it.mandatory } ?: return
+    AlertDialog(
+        onDismissRequest = manager::noticeShown,
+        title = { Text(stringResource(R.string.update_required_title)) },
+        text = { Text(stringResource(R.string.update_required_body, required.versionName)) },
+        confirmButton = {
+            TextButton(onClick = {
+                manager.noticeShown()
+                onView()
+            }) { Text(stringResource(R.string.update_notice_view)) }
+        },
+        dismissButton = {
+            TextButton(onClick = manager::noticeShown) { Text(stringResource(R.string.update_notice_later)) }
+        },
+    )
 }

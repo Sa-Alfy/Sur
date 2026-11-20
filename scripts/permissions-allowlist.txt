@@ -6,6 +6,7 @@ android.permission.INTERNET
 android.permission.POST_NOTIFICATIONS
 android.permission.READ_EXTERNAL_STORAGE
 android.permission.READ_MEDIA_AUDIO
+android.permission.REQUEST_INSTALL_PACKAGES
 android.permission.WAKE_LOCK
 android.permission.WRITE_EXTERNAL_STORAGE
 io.github.saalfy.sur.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

@@ -1,7 +1,11 @@
 name: Release
 
-# Builds the signed release APK and attaches it to a GitHub release.
+# Builds the signed release APK and attaches it to a DRAFT GitHub release.
 # Runs when a v* tag is pushed, or by hand for an existing tag (Actions -> Release -> Run workflow).
+#
+# Nothing reaches users from here: the in-app updater reads sur-update.json from the latest
+# *published* release. The maintainer downloads this APK, signs the manifest offline with
+# scripts/update_manifest.py, uploads it, then publishes the draft. See docs/RELEASE_CHECKLIST.md.
 #
 # Needs these repository secrets (Settings -> Secrets and variables -> Actions):
 #   SUR_RELEASE_KEYSTORE_BASE64   base64 of the .jks file
@@ -80,25 +84,38 @@ jobs:
           ./gradlew assembleRelease --console=plain
           cp app/build/outputs/apk/release/app-release.apk "Sur-$TAG.apk"
 
-      - name: Verify signature
+      - name: Verify package, version and signing certificate
         run: |
-          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$apksigner" verify --print-certs "Sur-$TAG.apk" | grep -E "SHA-256" | tee cert.txt
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$bt/apksigner" verify --print-certs "Sur-$TAG.apk" | grep -E "SHA-256" | tee cert.txt
+          # Same certificate as every release since v0.3.1; a different one could never update installs.
+          grep -q "certificate SHA-256 digest: dad26ae786b2526a36b681f33ff3be1c6c761a806cef6c0da36e6865d7756f42" cert.txt             || { echo "::error::APK is not signed with Sur's release certificate"; exit 1; }
+          badging=$("$bt/aapt2" dump badging "Sur-$TAG.apk")
+          echo "$badging" | head -1
+          echo "$badging" | grep -q "package: name='io.github.saalfy.sur' " || { echo "::error::wrong package name"; exit 1; }
+          echo "$badging" | grep -q "versionName='${TAG#v}'" || { echo "::error::versionName does not match tag $TAG"; exit 1; }
+          if echo "$badging" | grep -q "application-debuggable"; then echo "::error::debuggable APK"; exit 1; fi
           sha256sum "Sur-$TAG.apk" | tee "Sur-$TAG.apk.sha256"
+          echo "size: $(stat -c %s "Sur-$TAG.apk") bytes"
 
       - name: Remove keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/sur-release.jks"
 
-      - name: Create or update GitHub release
+      - name: Create draft release (or update an existing one)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           notes="docs/releases/release-${TAG#v}.md"
           if gh release view "$TAG" > /dev/null 2>&1; then
+            # A published release's APK is pinned by its signed sur-update.json; never swap it.
+            if [ "$(gh release view "$TAG" --json isDraft -q .isDraft)" != "true" ]; then
+              echo "::error::$TAG is already published; refusing to replace its APK (the signed update manifest names its SHA-256)."
+              exit 1
+            fi
             gh release upload "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --clobber
           elif [ -f "$notes" ]; then
-            gh release create "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --title "Sur $TAG" --notes-file "$notes"
+            gh release create "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --draft --title "Sur $TAG" --notes-file "$notes"
           else
-            gh release create "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --title "Sur $TAG" --generate-notes
+            gh release create "$TAG" "Sur-$TAG.apk" "Sur-$TAG.apk.sha256" --draft --title "Sur $TAG" --generate-notes
           fi

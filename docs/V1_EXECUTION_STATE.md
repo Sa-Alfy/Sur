@@ -1,6 +1,6 @@
 # Sur V1 execution state
 
-Updated: 2026-11-19. Current phase: **10 complete. v1.0.0 prepared on main; signed APK and phone tests pending (maintainer).**
+Updated: 2026-11-20. Current phase: **11 (online update system) code complete on main; ships in the next stable release (not yet versioned). Device install test pending (maintainer).**
 
 ## Repository state at Phase 0
 - `origin/main` = 98b0bd1. `phase-11b3` (PR #2, open, mergeable) = 53c6dc2 + Phase 0 checkpoint.
@@ -39,6 +39,7 @@ Updated: 2026-11-19. Current phase: **10 complete. v1.0.0 prepared on main; sign
 | 8 | PASS (code) | 15783a8 | UI/UX, details below |
 | 9 | PASS | a4c2bfb | Security and release config, details below |
 | 10 | PASS (automated) | (see git log, tag v1.0.0) | Final validation, details below |
+| 11 | PASS (automated) | (see git log) | Online update system, details below |
 
 ## Phase 1: Metadata integrity
 - R2-01 + cover precedence: download overlay merge moved from `DownloadService` into
@@ -295,3 +296,43 @@ Windows note: Gradle 9.9.0's wrapper download timed out over IPv6;
 ## Unverified on device
 Everything device-specific: playback lifecycle, deletion permission flow, migration on a real
 v1 database, downloads on the A1k.
+
+## Phase 11: Online update system
+Added 2026-11-20 as a separate requirement. Design and format: `docs/APP_UPDATE_SYSTEM.md`;
+procedure: `docs/RELEASE_CHECKLIST.md`.
+- Inspected first: `release.yml` (tag → signed APK on GitHub), signing identity. Release cert
+  SHA-256 `dad26ae7…6f42` confirmed on the published v0.3.3 and v1.0.0 APKs; APK key unchanged.
+- Decisions (maintainer, 2026-11-20): new Ed25519 manifest key generated locally at
+  `D:/tools/keys/sur-update-ed25519.pem` (outside the repo; public key in `UpdateKeys`, id
+  `sur-update-2026-1`); manifest hosted as release asset
+  `releases/latest/download/sur-update.json`.
+- Code (`app/.../update/`, separate from `:downloader` and `download/`): `UpdateManifestParser`
+  + `Ed25519Verifier` (Bouncy Castle `bcprov-jdk18on` 1.86, released 2026-09-11; Android has no
+  Ed25519 before API 33), `UpdateChecker` (own OkHttp client, no HTTPS→HTTP redirects, 64 KiB
+  cap), `ApkDownloader` (private `files/updates/`, streaming, Range resume, size + SHA-256, one at
+  a time), `UpdateManager` (state machine, 12 h / 1 h cooldown, cached manifest re-verified on
+  start, notices), `AndroidUpdate.kt` (platform, prefs, `ACTION_INSTALL_PACKAGE` + FileProvider
+  `${applicationId}.updates`). UI: new Settings screen (gear on Playlists) with App updates and
+  About; snackbar / dismissible required-update dialog. Permission added: `REQUEST_INSTALL_PACKAGES`.
+- Privacy change: the start-up check is the first request Sur makes without a tap. Added
+  Settings → "Check automatically" (default on); About and README texts updated.
+- Release flow: `release.yml` now creates a **draft** release, checks package/versionName/
+  certificate/non-debuggable, and refuses to replace the APK of a published release. Manifest is
+  signed offline with `scripts/update_manifest.py`, then the draft is published by hand.
+- Tests: 66 JVM tests in `app/src/test/.../update/` (parser 21, checker 10, downloader 13,
+  manager 22) against production classes, incl. an envelope made by the release script.
+  Mutation check: skipping the signature check or allowing same-version "updates" fails 10 tests.
+  New `UpdatePlatformInstrumentedTest` (5) for the CI API 28 emulator: BC on ART, archive
+  inspection with certificates, FileProvider grant/refusal, installer intent resolves.
+- Results (local): `testDebugUnitTest` 408 pass / 0 fail / 2 skipped; `assembleDebug`,
+  `assembleDebugAndroidTest`, `lintDebug` (3 new warnings: BC 1.87 newer but < 2 weeks old,
+  usableSpace, none blocking), `minifyReleaseWithR8`, permission guard (12): PASS.
+- NOT verified: any real install. No device or emulator here; the instrumented tests run only in
+  CI and never install. The full update (old signed APK → new signed APK, data kept) needs the
+  next release and the A1k: `docs/RELEASE_CHECKLIST.md` §6. ColorOS's installer returning a
+  result for `EXTRA_RETURN_RESULT` is unverified (if it doesn't, the user sees "cancelled" but
+  the restart check still reports a real update).
+- Not done in this phase: the version bump and publishing the first release that carries
+  `sur-update.json`. Until then the manifest URL returns 404 and the app shows "no update
+  information is published yet" on a manual check (auto checks stay silent). v1.0.0 users have
+  no updater and must install the next release by hand once.

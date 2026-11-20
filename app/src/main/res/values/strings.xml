@@ -84,7 +84,7 @@
     <string name="about">About</string>
     <string name="about_title">Sur %1$s</string>
     <string name="about_description">A lightweight, open-source music player for the music on your phone.</string>
-    <string name="about_privacy">No accounts, ads or analytics. Network is used only for downloads you start and for Find cover &amp; details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org).</string>
+    <string name="about_privacy">No accounts, ads or analytics. Network is used only for downloads you start, for Find cover &amp; details lookups you start (hosts: musicbrainz.org, coverartarchive.org and archive.org), and to check github.com for Sur updates (can be turned off in Settings).</string>
     <string name="about_developer_label">Developer</string>
     <string name="about_developer_name">Shariar Ahamed</string>
     <string name="about_developer_github">GitHub: Sa-Alfy</string>
@@ -170,5 +170,54 @@
     <string name="remove">Remove</string>
     <string name="find_info_cover_preview">Cover preview</string>
     <string name="find_info_no_confident">Couldn\'t find a confident match — tap a suggestion to use it</string>
-</resources>
 
+    <!-- Settings and in-app updates -->
+    <string name="settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="retry">Retry</string>
+    <string name="update_section_title">App updates</string>
+    <string name="update_installed_version">Installed version: %1$s</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_up_to_date">Sur is up to date.</string>
+    <string name="update_available">Sur %1$s is available</string>
+    <string name="update_available_required">Sur %1$s is available (required update)</string>
+    <string name="update_release_meta">Released %1$s · %2$s MB</string>
+    <string name="update_notes_more">Show more</string>
+    <string name="update_notes_less">Show less</string>
+    <string name="update_download">Download update</string>
+    <string name="update_downloading">Downloading %1$s of %2$s MB</string>
+    <string name="update_resume">Resume download</string>
+    <string name="update_download_interrupted">Download interrupted: %1$s</string>
+    <string name="update_verified">Download verified against the signed release. Ready to install.</string>
+    <string name="update_install">Install</string>
+    <string name="update_permission_explain">To install updates, Android needs you to allow Sur to install apps. Sur only uses this to open Android\'s installer for its own verified updates; you approve every install. Turn on \"Allow from this source\", then come back.</string>
+    <string name="update_install_cancelled">Installation cancelled. Your current version is unchanged.</string>
+    <string name="update_install_failed">Android couldn\'t install the update. Your current version is unchanged.</string>
+    <string name="update_too_old">This version is too old to update from inside the app. Download the new version from GitHub.</string>
+    <string name="update_open_releases">Open GitHub releases</string>
+    <string name="update_device_unsupported">This update needs a newer Android version (API %1$d).</string>
+    <string name="update_check_failed">Couldn\'t check for updates: %1$s</string>
+    <string name="update_err_offline">no internet connection</string>
+    <string name="update_err_dns">server not found</string>
+    <string name="update_err_timeout">the connection timed out</string>
+    <string name="update_err_insecure">the secure connection failed</string>
+    <string name="update_err_connection">the connection failed</string>
+    <string name="update_err_not_published">no update information is published yet</string>
+    <string name="update_err_http">server error (%1$d)</string>
+    <string name="update_err_signature">The update information is not signed by Sur\'s key and was ignored.</string>
+    <string name="update_err_invalid_manifest">The update information is invalid and was ignored.</string>
+    <string name="update_err_checksum">The download didn\'t match the signed release and was deleted.</string>
+    <string name="update_err_wrong_package">The downloaded file isn\'t the expected Sur version and was deleted.</string>
+    <string name="update_err_wrong_signer">The downloaded app isn\'t signed with Sur\'s key and was deleted.</string>
+    <string name="update_err_space">Not enough free space to download the update.</string>
+    <string name="update_err_storage">Couldn\'t save the update file.</string>
+    <string name="update_notice">Sur %1$s is available</string>
+    <string name="update_notice_view">View</string>
+    <string name="update_notice_later">Later</string>
+    <string name="update_required_title">Required update</string>
+    <string name="update_required_body">Sur %1$s is a required update. You can keep playing music; install it from Settings when ready.</string>
+    <string name="update_auto_check">Check automatically</string>
+    <string name="update_auto_check_summary">When Sur starts, at most every 12 hours. Contacts github.com only.</string>
+    <string name="update_done">Sur was updated to %1$s</string>
+</resources>

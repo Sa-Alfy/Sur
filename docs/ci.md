@@ -19,8 +19,12 @@ Boots an API 28 x86_64 emulator (Android 9, same as the A1k test phone) with KVM
 `instrumented-test-results`. Adds roughly 5-10 minutes, in parallel with `build`.
 
 ## Release workflow
-`.github/workflows/release.yml` builds the signed release APK and creates (or updates) the
-GitHub release for a tag. It runs on a pushed `v*` tag, or by hand: Actions -> Release ->
+`.github/workflows/release.yml` builds the signed release APK and creates a **draft** GitHub
+release for a tag (or updates the APK of a release that is still a draft; a published release's
+APK is never replaced, because its signed update manifest pins the SHA-256). It also checks the
+package name, versionName against the tag, the release certificate and that the APK is not
+debuggable. Publishing (after uploading the offline-signed `sur-update.json`) is a manual step:
+see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). It runs on a pushed `v*` tag, or by hand: Actions -> Release ->
 Run workflow, with an existing tag such as `v1.0.0` (needed for tags created before the
 workflow existed). Release notes come from `docs/releases/release-<version>.md`; the APK and a
 `.sha256` file are attached. The keystore is decoded into the runner's temp dir and deleted
@@ -40,6 +44,9 @@ gh secret set SUR_RELEASE_KEY_PASSWORD
 history.) If a secret is missing the workflow stops at "Check signing secrets". Always check
 that the "Verify signature" step prints certificate SHA-256 `dad26ae7...756f42` (same as the
 README fingerprint).
+
+The CI `build` job also runs `scripts/update_manifest.py verify` on a test envelope made by
+the tool (throwaway key), and checks that it does not verify against the production key.
 
 ## Update the permission allowlist
 Only when a permission is added on purpose. In the same PR: add the name to

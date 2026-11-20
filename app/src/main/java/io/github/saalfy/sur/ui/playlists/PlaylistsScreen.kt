@@ -85,6 +85,7 @@ private sealed interface PlaylistsDialog {
 @Composable
 fun PlaylistsScreen(
     onOpen: (playlistId: Long) -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlaylistsViewModel = viewModel(factory = PlaylistsViewModel.Factory),
 ) {
@@ -187,6 +188,9 @@ fun PlaylistsScreen(
                 actions = {
                     IconButton(onClick = { showAbout = true }) {
                         Icon(painterResource(R.drawable.ic_info), contentDescription = stringResource(R.string.about))
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                     }
                 },
             )

@@ -50,6 +50,11 @@ val openSourceLicenses: List<OpenSourceLicense> = listOf(
         description = "Tiny JSON parser used by NewPipeExtractor.",
     ),
     OpenSourceLicense(
+        name = "Bouncy Castle",
+        license = "MIT (Bouncy Castle Licence)",
+        description = "Ed25519 signature check for in-app update information.",
+    ),
+    OpenSourceLicense(
         name = "Reorderable",
         license = "Apache-2.0",
         description = "Drag to reorder for playlist rows.",

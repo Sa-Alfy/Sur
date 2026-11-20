@@ -46,6 +46,14 @@ jobs:
       - name: Permission guard
         run: bash scripts/check-permissions.sh
 
+      # The release tool must keep producing envelopes the app accepts (fixture made by the tool).
+      - name: Update manifest tool check
+        run: |
+          python3 scripts/update_manifest.py verify app/src/test/resources/update/script-envelope.json             --trusted-public-key "$(cat app/src/test/resources/update/script-envelope.pub)"
+          if python3 scripts/update_manifest.py verify app/src/test/resources/update/script-envelope.json; then
+            echo "::error::test-signed manifest verified against the production key"; exit 1
+          fi
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:

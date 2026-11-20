@@ -17,3 +17,6 @@ app/build/
 AGENTS.md
 .agents/
 
+
+# Release signing scratch (docs/RELEASE_CHECKLIST.md)
+/release-tmp/

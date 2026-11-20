@@ -86,6 +86,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.okhttp)
     implementation(libs.nanojson)
+    implementation(libs.bouncycastle.bcprov)
     debugImplementation("io.github.kyant0:taglib:1.0.6")
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)

@@ -30,7 +30,7 @@ Release APKs are signed with Sur's release key. SHA-256 certificate fingerprint:
 - **Playlists backup**: export playlists as M3U files and import them back with automatic matching (relative path, file name, or title and artist) and detailed summary dialogs — no extra permissions needed.
 - **Find cover & details**: look up track metadata (title, artist, album) and cover art via MusicBrainz and Cover Art Archive, from a song's ⋮ menu or the placeholder art on Now Playing. The search runs on its own and preselects the best match; use it, take only the cover, pick another match, or search yourself with "artist - title". Matches are saved locally.
 - **Light on resources**: built and tested on a 2 GB RAM Android 9 phone.
-- **Private**: no accounts, cloud, ads or analytics. Network is used only for downloads you start (YouTube: youtube.com, googlevideo.com, ytimg.com) and for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org).
+- **Private**: no accounts, cloud, ads or analytics. Network is used only for downloads you start (YouTube: youtube.com, googlevideo.com, ytimg.com), for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org), and for the update check (github.com).
 
 ## Roadmap
 
@@ -45,7 +45,7 @@ Sur asks for:
 - **Audio files**: to read your music library (`READ_MEDIA_AUDIO` on 13+, `READ_EXTERNAL_STORAGE` on 12 and below).
 - **Storage write (Android 8-9 only)**: `WRITE_EXTERNAL_STORAGE`, asked together with audio access on first launch (Android 8-9 need it to save downloads and delete songs).
 - **Notifications** (Android 13+, optional): to show playback controls and download progress.
-- **Network access**: used only for downloads you start (youtube.com, googlevideo.com, ytimg.com) and for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org). Sur makes no network requests on its own.
+- **Network access**: used only for downloads you start (youtube.com, googlevideo.com, ytimg.com) and for Find cover & details lookups you start (musicbrainz.org, coverartarchive.org, archive.org). The only request Sur makes on its own is the update check: one HTTPS request to github.com when the app starts, at most every 12 hours, sending nothing about you or your library. Turn it off in Settings → App updates → Check automatically.
 
 Some phones (Oppo, Xiaomi, Vivo, Huawei…) stop background apps aggressively. If music cuts out, allow Sur to run without battery restrictions. Sur offers a shortcut on first launch.
 
@@ -80,6 +80,13 @@ Tests:
 ```
 
 On Windows, if Gradle fails with "Unable to establish loopback connection" or times out downloading itself, set `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=<short dir> -Djava.net.preferIPv4Stack=true`.
+
+### In-app updates
+Settings → App updates checks GitHub Releases for a newer stable version (at most every 12 h on
+start, or by hand), shows the notes and size, downloads the APK, verifies it against an
+Ed25519-signed manifest and opens Android's installer. Nothing installs without your approval.
+Details: [`docs/APP_UPDATE_SYSTEM.md`](docs/APP_UPDATE_SYSTEM.md); maintainers:
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
 ### CI and releases
 

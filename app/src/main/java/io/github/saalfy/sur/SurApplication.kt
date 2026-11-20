@@ -19,12 +19,21 @@ import io.github.saalfy.sur.data.playlist.PlaylistRepository
 import io.github.saalfy.sur.data.playlist.RoomPlaylistRepository
 import io.github.saalfy.sur.download.DownloadManager
 import io.github.saalfy.sur.ui.artwork.ArtworkLoader
+import io.github.saalfy.sur.update.AndroidUpdatePlatform
+import io.github.saalfy.sur.update.ApkDownloader
+import io.github.saalfy.sur.update.Ed25519Verifier
+import io.github.saalfy.sur.update.PrefsUpdateStore
+import io.github.saalfy.sur.update.UpdateChecker
+import io.github.saalfy.sur.update.UpdateKeys
+import io.github.saalfy.sur.update.UpdateManager
+import io.github.saalfy.sur.update.UpdateManifestParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import java.io.File
 
 class SurApplication : Application() {
     lateinit var container: AppContainer
@@ -104,4 +113,19 @@ class AppContainer(context: Context) {
     }
 
     val downloadManager: DownloadManager get() = DownloadManager
+
+    /** In-app updater. Own client, files and state; independent of the music downloader. */
+    val updateManager: UpdateManager by lazy {
+        val platform = AndroidUpdatePlatform(context)
+        val parser = UpdateManifestParser(Ed25519Verifier(UpdateKeys.TRUSTED), expectedPackage = context.packageName)
+        val client = UpdateChecker.defaultClient()
+        UpdateManager(
+            scope = appScope,
+            checker = UpdateChecker(client, parser, isOnline = platform::isOnline),
+            parser = parser,
+            downloader = ApkDownloader(client, File(context.filesDir, "updates")),
+            store = PrefsUpdateStore(context),
+            platform = platform,
+        )
+    }
 }
