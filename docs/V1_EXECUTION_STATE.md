@@ -315,7 +315,7 @@ procedure: `docs/RELEASE_CHECKLIST.md`.
   `${applicationId}.updates`). UI: new Settings screen (gear on Playlists) with App updates and
   About; snackbar / dismissible required-update dialog. Permission added: `REQUEST_INSTALL_PACKAGES`.
 - Privacy change: the start-up check is the first request Sur makes without a tap. Added
-  Settings → "Check automatically" (default on); About and README texts updated.
+  Settings → "Check automatically" (default on, confirmed by the maintainer 2026-11-20); About and README texts updated.
 - Release flow: `release.yml` now creates a **draft** release, checks package/versionName/
   certificate/non-debuggable, and refuses to replace the APK of a published release. Manifest is
   signed offline with `scripts/update_manifest.py`, then the draft is published by hand.
